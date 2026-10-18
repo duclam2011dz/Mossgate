@@ -1,0 +1,51 @@
+@import '../../shared/base.css';
+#game-canvas {
+  display: block;
+  width: 100vw;
+  height: 100dvh;
+  outline: none;
+  image-rendering: pixelated;
+}
+.game-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: radial-gradient(ellipse at center, #02160c18, #02160c66);
+}
+.game-panel {
+  width: min(440px, 100%);
+  padding: 38px;
+  border-radius: 28px;
+  text-align: center;
+  animation: panel-enter 0.24s ease-out;
+}
+.game-panel h1 {
+  font:
+    400 clamp(30px, 5vw, 42px) Georgia,
+    serif;
+  letter-spacing: -1px;
+  margin: 0 0 14px;
+  text-shadow: 0 3px 14px #001a0e80;
+}
+.game-panel p {
+  color: var(--muted);
+  line-height: 1.7;
+  font-size: 13px;
+  margin: 0 0 28px;
+  overflow-wrap: anywhere;
+}
+.game-actions {
+  display: grid;
+  gap: 12px;
+}
+.game-actions button {
+  padding: 13px 20px;
+}
+@media (max-width: 500px) {
+  .game-panel {
+    padding: 28px 22px;
+  }
+}

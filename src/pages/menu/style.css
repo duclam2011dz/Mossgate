@@ -1,0 +1,113 @@
+@import '../../shared/base.css';
+#menu-background {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  image-rendering: pixelated;
+}
+.menu {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 20%,
+    #03150f66 100%
+  );
+  perspective: 1100px;
+}
+.menu-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  width: min(460px, 100%);
+  padding: 48px 34px 30px;
+  border-radius: 32px;
+  background:
+    radial-gradient(
+      ellipse at var(--light-x, 50%) var(--light-y, 20%),
+      #addca52b,
+      transparent 70%
+    ),
+    linear-gradient(145deg, #315d3b40, #031c1599), rgba(8, 36, 27, 0.5);
+}
+.menu h1 {
+  font:
+    400 clamp(44px, 7vw, 76px) Georgia,
+    serif;
+  letter-spacing: -3px;
+  margin: 0 0 8px;
+  color: #f2f7e4;
+  text-shadow: 0 3px 14px #00170fa6;
+}
+.menu-actions {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+}
+.menu-actions button {
+  min-width: 135px;
+  padding: 14px 25px;
+  font-size: 15px;
+  overflow: hidden;
+}
+.menu-actions button::after {
+  content: '';
+  position: absolute;
+  inset: -35%;
+  background: linear-gradient(
+    110deg,
+    transparent 36%,
+    #efffd93b 50%,
+    transparent 64%
+  );
+  pointer-events: none;
+  translate: -120% 0;
+}
+.menu-actions button:hover::after {
+  animation: light-sweep 0.75s ease-out;
+}
+.menu p {
+  color: #ffcdc0;
+  font-size: 12px;
+  line-height: 1.5;
+  max-width: 360px;
+  min-height: 36px;
+  margin: 0;
+  text-align: center;
+}
+.play-options[open] {
+  display: grid;
+  gap: 12px;
+  min-width: 300px;
+  background:
+    radial-gradient(
+      ellipse at var(--light-x, 50%) var(--light-y, 0%),
+      #c6e9b51f,
+      transparent 80%
+    ),
+    rgba(7, 32, 25, 0.72);
+}
+.dialog-close {
+  justify-self: end;
+  font-size: 11px;
+  padding: 5px 9px;
+  margin-bottom: 8px;
+}
+@media (max-width: 400px) {
+  .menu-content {
+    padding: 36px 18px 22px;
+  }
+  .menu-actions {
+    gap: 10px;
+  }
+  .menu-actions button {
+    min-width: 112px;
+    padding: 13px 18px;
+  }
+}

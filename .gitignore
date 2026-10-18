@@ -1,0 +1,17 @@
+node_modules/
+dist/
+test-results/
+playwright-report/
+output/
+.cache/
+
+.env
+.env.*
+!.env.example
+*.log
+*.pem
+*.key
+
+.codex/
+.agents/
+.aws/

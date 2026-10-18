@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#dce8d5" />
+    <title>Mossgate</title>
+    <link rel="stylesheet" href="/src/pages/menu/style.css" />
+  </head>
+  <body>
+    <main id="app" aria-busy="true">
+      <canvas id="menu-background" aria-hidden="true"></canvas>
+      <section class="menu">
+        <div class="menu-content glass-surface" data-glass-tilt>
+          <h1>Mossgate</h1>
+          <div class="menu-actions">
+            <button id="play" class="primary">Play</button
+            ><button id="edit">Editor</button>
+          </div>
+          <p id="menu-message" role="status"></p>
+        </div>
+        <dialog id="play-options" class="play-options" data-glass-tilt>
+          <button class="dialog-close" aria-label="Close play choices">
+            Close
+          </button>
+          <h2>Choose a map</h2>
+          <button id="sample-map" class="primary">Forest Ruins</button
+          ><button id="open-map">Open JSON file</button>
+        </dialog>
+        <input
+          id="play-file"
+          type="file"
+          accept=".json,application/json"
+          hidden
+        />
+      </section>
+    </main>
+    <script type="module" src="/src/pages/menu/entry.js"></script>
+  </body>
+</html>

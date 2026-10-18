@@ -1,0 +1,9 @@
+node_modules
+dist
+public/assets
+test-results
+playwright-report
+output
+package-lock.json
+
+public/maps/*.json

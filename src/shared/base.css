@@ -1,0 +1,226 @@
+:root {
+  --ink: #f1f6e7;
+  --muted: #c6d9c8;
+  --gold: #edcf8c;
+  --glass: rgba(9, 37, 29, 0.65);
+  --glass-light: rgba(67, 109, 82, 0.23);
+  --glass-border: rgba(208, 242, 204, 0.25);
+  --glass-blur: 14px;
+  --radius: 20px;
+  --shadow:
+    0 24px 70px #020e0ab3, 0 7px 16px #0004, inset 0 1px #edffe733,
+    inset 0 -1px #0003;
+  --focus: #f7dca1;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  color: var(--ink);
+  background: #0b241c;
+  color-scheme: dark;
+  font-synthesis: none;
+}
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#app {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+#app {
+  position: relative;
+}
+[hidden] {
+  display: none !important;
+}
+button,
+input,
+select {
+  font: inherit;
+}
+button,
+input,
+select,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+button,
+.glass-surface,
+dialog {
+  color: var(--ink);
+  border: 1px solid var(--glass-border);
+  background:
+    linear-gradient(145deg, rgba(99, 147, 107, 0.16), rgba(5, 28, 23, 0.32)),
+    var(--glass);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(var(--glass-blur)) saturate(125%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(125%);
+}
+button {
+  position: relative;
+  border-radius: 12px;
+  padding: 10px 17px;
+  cursor: pointer;
+  background:
+    linear-gradient(140deg, #9ac8a224, #153b2c44), rgba(8, 33, 26, 0.72);
+  box-shadow:
+    0 5px 12px #0003,
+    inset 0 1px #eaffdf24;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transition:
+    transform 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+button:hover {
+  border-color: #d4edb97a;
+  background-color: #2f634dc4;
+  transform: translateY(-2px);
+}
+button:active {
+  transform: translateY(1px);
+  box-shadow: inset 0 2px 7px #0006;
+}
+button:disabled {
+  color: #b2c5b5;
+  cursor: default;
+  border-style: dashed;
+  box-shadow: none;
+  transform: none;
+  background: #163729a8;
+}
+button.primary,
+button[aria-pressed='true'] {
+  background: linear-gradient(140deg, #a0803b77, #39593877), #163b2cd6;
+  border-color: #dfc27e99;
+  color: #fff0c3;
+}
+button.primary:hover,
+button[aria-pressed='true']:hover {
+  background-color: #716038;
+}
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+a:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 4px;
+}
+input,
+select {
+  color: var(--ink);
+  background: #09281eb8;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  padding: 7px 8px;
+  box-shadow: inset 0 2px 4px #0004;
+}
+select option {
+  background: #173e2e;
+  color: var(--ink);
+}
+input[type='checkbox'] {
+  accent-color: #d4b667;
+}
+a {
+  color: var(--gold);
+}
+dialog {
+  border-radius: 24px;
+  max-width: calc(100vw - 28px);
+  padding: 28px;
+  animation: panel-enter 0.24s ease-out;
+}
+dialog::backdrop {
+  background: #03120d66;
+  backdrop-filter: blur(3px);
+}
+dialog h2 {
+  font-size: 22px;
+  margin: 0 0 20px;
+  letter-spacing: -0.5px;
+}
+dialog p {
+  color: var(--muted);
+  line-height: 1.6;
+  font-size: 13px;
+  max-width: 430px;
+}
+.dialog-actions,
+.decision div {
+  display: flex;
+  gap: 10px;
+  margin-top: 24px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+.loading,
+.page-error {
+  height: 100%;
+  display: grid;
+  place-content: center;
+  gap: 20px;
+  text-align: center;
+  padding: 24px;
+}
+[data-glass-tilt] {
+  transform: perspective(1100px) rotateX(var(--tilt-x, 0deg))
+    rotateY(var(--tilt-y, 0deg));
+  transition: transform 0.25s ease-out;
+}
+@keyframes panel-enter {
+  from {
+    opacity: 0;
+    translate: 0 10px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+@keyframes sidebar-enter {
+  from {
+    opacity: 0;
+    translate: 12px 0;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+@keyframes light-sweep {
+  from {
+    translate: -120% 0;
+  }
+  to {
+    translate: 120% 0;
+  }
+}
+@supports not (
+  (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+) {
+  .glass-surface,
+  dialog,
+  .editor-bar,
+  .palette,
+  .editor-status,
+  .inspector,
+  #minimap {
+    background: #12382af0 !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+  [data-glass-tilt] {
+    transform: none !important;
+  }
+}

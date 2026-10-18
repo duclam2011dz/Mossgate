@@ -1,0 +1,34 @@
+{
+  "name": "mossgate",
+  "version": "1.0.5",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "^20.19.0 || ^22.13.0 || >=24.0.0"
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "assets:generate": "node scripts/generate-assets.js",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run tests/unit",
+    "test:smoke": "vitest run tests/smoke",
+    "test:e2e": "playwright test",
+    "check": "npm run lint && npm run format:check && npm test && npm run test:smoke && npm run build && npm run test:e2e && npm run test:production",
+    "test:production": "npm run build && playwright test --config playwright.production.config.js"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.64.1",
+    "eslint": "^10.12.0",
+    "globals": "^17.13.0",
+    "pngjs": "^7.0.0",
+    "prettier": "^3.9.10",
+    "vite": "^8.3.4",
+    "vitest": "^4.0.0"
+  },
+  "license": "MIT"
+}
