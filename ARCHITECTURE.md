@@ -44,7 +44,7 @@ BackgroundRenderer composites sky, distant forest, ruins, and near trees into a 
 
 ## Validation and maintenance
 
-Vitest covers legacy/new physics, codec inheritance, editor transactions, timing, swept hazards, checkpoint resets, and animation/effects limits. Smoke tests compare regenerated assets/manifest, verify map structure, and complete the challenge with real inputs. Playwright covers Menu, inspector, editor entity tools, file workflows, and both complete course replays.
+Vitest covers legacy/new physics, codec inheritance, editor transactions, timing, swept hazards, checkpoint resets, and animation/effects limits. Smoke tests verify locked dependency CLI files, compare regenerated assets/manifest, verify map structure, and complete the challenge with real inputs. Playwright covers Menu, inspector, editor entity tools, file workflows, and both complete course replays.
 
 The original easy level is preserved as forest-ruins-legacy.json. The new five-stage 512 x 96 course has four checkpoints and an approximately 1:41 optimal replay; 5-8 minutes is an unmeasured first-play design target, not a forced minimum. Browser review includes Firefox/Edge, viewport variants, reduced motion, and large maps.
 

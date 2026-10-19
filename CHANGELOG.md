@@ -5,7 +5,7 @@
 - Lightened emerald glass and reduced blur; added gentle, phase-offset sunlight reflections with hidden/reduced-motion handling.
 - Migrated application, generator, tests, helpers, and executable configs to strict TypeScript with explicit domain/editor/browser contracts.
 - Added draft/playable map narrowing, guarded DOM access, declared class APIs, and test-only typed browser hooks.
-- Added type-contract/source-coverage checks and zero-warning type-aware lint; CI checks types/lint/format before runtime/browser stages.
+- Added type-contract/source-coverage and clean-install CLI checks, plus zero-warning type-aware lint; CI checks types/lint/format before runtime/browser stages.
 - Kept Node support, generated artwork, gameplay, physics, map geometry, and JSON versions unchanged.
 
 ## 1.0.5 - 2026-10-18
