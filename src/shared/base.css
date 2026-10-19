@@ -304,3 +304,96 @@ html[data-document-hidden] *::after {
     opacity: 0.4;
   }
 }
+
+:root[data-scene='day'] {
+  --glass: rgba(55, 108, 73, 0.18);
+  --glass-light: rgba(126, 174, 110, 0.14);
+  --glass-blur: 3px;
+  --glass-border: rgba(244, 255, 214, 0.48);
+  --ink: #fff9df;
+  --muted: #edf5d9;
+}
+html[data-scene='day'] .glass-surface::before,
+html[data-scene='day'] dialog::before,
+html[data-scene='day'] .editor-bar::before,
+html[data-scene='day'] .palette::before,
+html[data-scene='day'] .inspector::before {
+  background: linear-gradient(
+    118deg,
+    transparent 15%,
+    #fff2ab38 33%,
+    #fffbe980 35%,
+    #ffe5a225 40%,
+    transparent 65%
+  );
+  box-shadow:
+    inset 0 1px #fffbd6c9,
+    inset 1px 0 #fff4b577;
+}
+html[data-scene='rain'] {
+  --glass: rgba(18, 52, 48, 0.42);
+  --glass-blur: 7px;
+  --glass-border: rgba(190, 220, 224, 0.38);
+}
+.weather-filters {
+  position: absolute;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.glass-water {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: -1;
+  contain: paint;
+  background: repeating-linear-gradient(
+    113deg,
+    #c2dce504 0 1px,
+    transparent 1px 5px
+  );
+}
+.water-bead {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 48% 46% 52% 50%;
+  background:
+    radial-gradient(ellipse at 30% 18%, #f0ffff9c, transparent 25%),
+    linear-gradient(110deg, #b9d8dc12, #061b251c 50%, #c6eef34d);
+  box-shadow:
+    inset 1px 1px 1px #e4ffff80,
+    inset -1px -1px 2px #061f4273,
+    0 1px 2px #001a2b66;
+  backdrop-filter: blur(1.2px) contrast(1.15);
+}
+@supports (backdrop-filter: url('#rain-refraction')) {
+  .water-bead {
+    backdrop-filter: blur(1px) url('#rain-refraction') contrast(1.15);
+  }
+}
+.background-dialog {
+  width: min(540px, calc(100vw - 28px));
+}
+.background-dialog label {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.background-dialog canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 18px 0;
+  border-radius: 12px;
+  background: #173e2e;
+  image-rendering: pixelated;
+}
+.background-dialog .atlas-label {
+  font-size: 12px;
+}
+.background-dialog [role='status'] {
+  min-height: 1.5em;
+}

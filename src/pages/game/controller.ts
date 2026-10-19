@@ -1,3 +1,5 @@
+import { SceneController } from '../../infrastructure/scene-controller.ts';
+import { BackgroundResources } from '../../infrastructure/background-resources.ts';
 import type { Assets } from '../../infrastructure/assets.ts';
 import type { PlayableMap, Input, Point } from '../../domain/contracts.ts';
 import type { AnimationController } from '../../rendering/animation.ts';
@@ -25,6 +27,7 @@ export class GameController {
   signal: AbortSignal;
   reduced: MediaQueryList;
   background: BackgroundRenderer;
+  scene: SceneController;
   run: GameSimulation;
   anim: AnimationController;
   fx: EffectsSystem;
@@ -52,6 +55,8 @@ export class GameController {
     this.signal = this.controller.signal;
     this.reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
     this.background = new BackgroundRenderer();
+    this.scene = new SceneController(this.background);
+    void this.scene.apply(level.background);
     this.run = new GameSimulation(this.level);
     this.anim = createAnimation();
     this.fx = createEffects();
@@ -101,7 +106,9 @@ export class GameController {
   }
   dispose() {
     this.controller.abort();
+    this.scene.dispose();
     this.background.dispose();
+    BackgroundResources.clear();
     this.input.dispose();
     this.overlay.dispose();
     cancelAnimationFrame(this.raf);

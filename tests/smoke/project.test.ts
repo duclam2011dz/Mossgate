@@ -39,8 +39,9 @@ it('ships detailed, correctly sized reproducible PNGs', () => {
     expect(stored.equals(buffer)).toBe(true);
     expect(required(second[name]).equals(buffer)).toBe(true);
     const png = PNG.sync.read(stored);
-    const dimensions =
-      name === 'background' || name.startsWith('background-')
+    const dimensions = name.endsWith('-atlas')
+      ? [2560, 1920]
+      : name === 'background' || name.startsWith('background-')
         ? [1280, 960]
         : name === 'portal'
           ? [128, 128]
@@ -77,7 +78,7 @@ it('ships detailed, correctly sized reproducible PNGs', () => {
       name === 'timed-spikes-retracted' ? 0 : 5,
     );
   }
-}, 15000);
+}, 30000);
 
 it('ships matching manifest and an importable special-tile showcase', () => {
   expect(
@@ -123,3 +124,33 @@ it('challenge course has five stages, four safe checkpoints and a complete legal
   expect(inputs.some((i) => i.sneak)).toBe(true);
   expect(inputs.some((i) => i.dashPressed)).toBe(true);
 }, 15000);
+
+it('ships four correctly ordered seamless atlas layers and keeps Night identical to legacy layers', () => {
+  const names = ['sky', 'distant', 'midground', 'near'];
+  for (const preset of ['night', 'day', 'rain']) {
+    const atlas = PNG.sync.read(
+      readFileSync(`public/assets/background-${preset}-atlas.png`),
+    );
+    for (let i = 0; i < 4; i++) {
+      const original = PNG.sync.read(
+        readFileSync(`public/assets/background-${names[i]}.png`),
+      );
+      for (let y = 0; y < 960; y++) {
+        const left =
+            ((Math.floor(i / 2) * 960 + y) * 2560 + (i % 2) * 1280) * 4,
+          right = left + 1279 * 4;
+        expect(
+          atlas.data
+            .subarray(left, left + 4)
+            .equals(atlas.data.subarray(right, right + 4)),
+        ).toBe(true);
+        if (preset === 'night')
+          expect(
+            atlas.data
+              .subarray(left, left + 1280 * 4)
+              .equals(original.data.subarray(y * 1280 * 4, (y + 1) * 1280 * 4)),
+          ).toBe(true);
+      }
+    }
+  }
+});

@@ -1,3 +1,8 @@
+import { BackgroundDialog } from '../infrastructure/background-dialog.ts';
+import { BackgroundResources } from '../infrastructure/background-resources.ts';
+import { SceneController } from '../infrastructure/scene-controller.ts';
+import { LevelPackageCodec } from '../infrastructure/level-package.ts';
+import { MapSession } from '../infrastructure/map-session.ts';
 import { GlassMotion } from '../infrastructure/glass-motion.ts';
 import type { Assets } from '../infrastructure/assets.ts';
 import type {
@@ -56,6 +61,11 @@ export class EditorController {
   mapCache: HTMLCanvasElement;
   tileCache: EditorTileCache;
   background: BackgroundRenderer;
+  scene: SceneController;
+  private ioBusy = false;
+  private incomingBackground:
+    import('../domain/contracts.ts').BackgroundSpec | undefined;
+  private sceneKey = '';
   backdrop: HTMLCanvasElement;
   backdropContext: CanvasRenderingContext2D;
   leaving: boolean;
@@ -109,6 +119,8 @@ export class EditorController {
     this.mapCache = document.createElement('canvas');
     this.tileCache = new EditorTileCache(this.assets);
     this.background = new BackgroundRenderer();
+    this.scene = new SceneController(this.background);
+    void MapSession.cleanup();
     this.backdrop = Dom.require(
       document,
       '#editor-background',
@@ -415,7 +427,7 @@ export class EditorController {
     this.root.addEventListener(
       'click',
       async (e) => {
-        if (!(e.target instanceof Element)) return;
+        if (!(e.target instanceof Element) || this.ioBusy) return;
         const t = e.target.closest<HTMLElement>('[data-tool]'),
           choice = e.target.closest<HTMLElement>('[data-tile]'),
           action =
@@ -449,6 +461,22 @@ export class EditorController {
             );
           Dom.require(this.root, '#tile-info', HTMLElement).textContent =
             tiles[this.tileId]?.description || 'Solid terrain.';
+        }
+        if (action === 'background') {
+          if (!(await this.inspector.guard())) return;
+          this.finish();
+          const selected = await BackgroundDialog.open(
+            this.model.level.background,
+            this.signal,
+            true,
+          );
+          if (selected && !this.signal.aborted) {
+            this.model.begin();
+            this.model.level.background = selected;
+            this.model.commit();
+            this.refresh();
+          }
+          this.collectResources();
         }
         if (action === 'menu' && (await this.canLeave())) {
           this.leaving = true;
@@ -521,16 +549,28 @@ export class EditorController {
         if (action === 'export') {
           if (!(await this.inspector.guard())) return;
           this.finish();
-          const blob = new Blob([this.model.export()], {
-              type: 'application/json',
-            }),
-            url = URL.createObjectURL(blob),
-            a = document.createElement('a');
-          a.href = url;
-          a.download = 'mossgate-map.json';
-          a.click();
-          setTimeout(() => URL.revokeObjectURL(url), 1000);
-          this.model.saved = this.model.revision;
+          this.ioBusy = true;
+          this.message('Preparing level ZIP...');
+          const revision = this.model.revision,
+            exporting = structuredClone(this.model.level);
+          try {
+            const atlas = await BackgroundResources.blob(exporting.background);
+            const blob = await LevelPackageCodec.encode(exporting, atlas);
+            if (this.signal.aborted) return;
+            const url = URL.createObjectURL(blob),
+              a = document.createElement('a');
+            a.href = url;
+            a.download = 'mossgate-map.zip';
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            this.model.saved = revision;
+          } catch (error) {
+            if (!this.signal.aborted) this.message(Guards.error(error));
+            return;
+          } finally {
+            this.ioBusy = false;
+          }
+
           this.refresh();
           this.message(
             playErrors(this.model.level).length
@@ -546,9 +586,12 @@ export class EditorController {
       async () => {
         const file = this.fileInput.files?.[0];
         this.fileInput.value = '';
-        if (!file) return;
+        if (!file || this.ioBusy) return;
+        this.ioBusy = true;
+        this.message('Opening map...');
         try {
           const imported = await readMapFile(file, { draft: true });
+          this.incomingBackground = imported.background;
           if (this.signal.aborted || !(await this.canLeave())) return;
           this.inspector.close();
           this.model = new EditorModel(imported);
@@ -559,6 +602,10 @@ export class EditorController {
           this.refresh();
         } catch (error) {
           if (!this.signal.aborted) this.message(Guards.error(error));
+        } finally {
+          this.incomingBackground = undefined;
+          this.ioBusy = false;
+          if (!this.signal.aborted) this.collectResources();
         }
       },
       { signal: this.signal },
@@ -734,7 +781,9 @@ export class EditorController {
   dispose() {
     this.controller.abort();
     this.inspector.dispose();
+    this.scene.dispose();
     this.background.dispose();
+    BackgroundResources.clear();
     this.backdrop.width = 1;
     this.backdrop.height = 1;
     this.tileCache.dispose();
@@ -797,7 +846,33 @@ export class EditorController {
       ))
     );
   };
+  collectResources = () => {
+    const keys = new Set<string>();
+    const add = (
+      spec: import('../domain/contracts.ts').BackgroundSpec | undefined,
+    ) => {
+      if (spec) keys.add(BackgroundResources.key(spec));
+    };
+    add(this.incomingBackground);
+    add(this.model.level.background);
+    add(this.model.pending?.background);
+    for (const command of [...this.model.history, ...this.model.future]) {
+      add(command.before.background);
+      add(command.after.background);
+    }
+    BackgroundResources.retain(keys);
+  };
   refresh = () => {
+    this.collectResources();
+    const spec = this.model.level.background,
+      key = BackgroundResources.key(spec) + ':' + (spec?.preset ?? 'night');
+    if (key !== this.sceneKey) {
+      this.sceneKey = key;
+      void this.scene.apply(spec).catch((error) => {
+        if (!this.signal.aborted) this.message(Guards.error(error));
+      });
+    }
+
     Dom.require(this.root, '[data-action="undo"]', HTMLButtonElement).disabled =
       !this.model.history.length;
     Dom.require(this.root, '[data-action="redo"]', HTMLButtonElement).disabled =
@@ -994,7 +1069,7 @@ export class EditorController {
     }
     return [w, h];
   };
-  draw = () => this.renderer.draw();
+  draw = (dt = 0) => this.renderer.draw(dt);
   tick = (now: number) => {
     const dt = Math.min(0.05, (now - this.last) / 1000 || 0);
     this.last = now;
@@ -1010,7 +1085,7 @@ export class EditorController {
       (32 * this.zoom);
     this.clampCamera();
     if (!document.hidden) {
-      this.draw();
+      this.draw(dt);
       this.inspector.position();
     }
     if (!document.hidden) this.raf = requestAnimationFrame(this.tick);

@@ -8,7 +8,7 @@ import { resolvedBox } from '../domain/properties.ts';
 import { BackgroundRenderer } from '../rendering/background.ts';
 export class EditorRenderer {
   constructor(readonly editor: EditorController) {}
-  draw() {
+  draw(dt = 0) {
     const editor = this.editor;
 
     const ratio = editor.canvas.width / editor.canvas.clientWidth,
@@ -26,6 +26,8 @@ export class EditorRenderer {
       editor.assets,
       bg.camera,
       bg.view,
+      dt,
+      matchMedia('(prefers-reduced-motion: reduce)').matches,
     );
     editor.ctx.setTransform(1, 0, 0, 1, 0, 0);
     editor.ctx.clearRect(0, 0, editor.canvas.width, editor.canvas.height);

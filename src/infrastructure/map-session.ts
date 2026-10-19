@@ -1,51 +1,64 @@
-import type { DraftMap } from '../domain/contracts.ts';
-import { Guards } from '../shared/guards.ts';
-import { MapCodec } from '../domain/map-codec.ts';
+import { LevelPackageCodec } from './level-package.ts';
+import { IndexedPackageStore } from './package-store.ts';
+import type { PackageStore } from './package-store.ts';
 import { MapValidator } from '../simulation/map-validator.ts';
+import { BackgroundResources } from './background-resources.ts';
 export class MapSession {
   static key = 'mossgate:play-map';
-  storage: Pick<Storage, 'setItem' | 'getItem'>;
-  constructor(storage?: Pick<Storage, 'setItem' | 'getItem'>) {
+  private storage: Pick<Storage, 'setItem' | 'getItem'>;
+  constructor(
+    storage?: Pick<Storage, 'setItem' | 'getItem'>,
+    private store: PackageStore = new IndexedPackageStore(),
+  ) {
     try {
       this.storage = storage ?? globalThis.sessionStorage;
     } catch {
-      throw new Error(
-        'Temporary browser storage is unavailable. Return to Menu and select the map again.',
-      );
+      throw new Error('Temporary browser storage is unavailable.');
     }
   }
-  save(level: DraftMap) {
+  async save(data: Blob) {
     const token = crypto.randomUUID();
     try {
-      this.storage.setItem(
-        MapSession.key,
-        JSON.stringify({ token, map: MapCodec.encodeLevel(level) }),
-      );
-    } catch {
+      const previous = this.storage.getItem(MapSession.key);
+      await this.store.sweep(Date.now());
+      await this.store.put({ token, created: Date.now(), data });
+      this.storage.setItem(MapSession.key, token);
+      if (previous) await this.store.delete(previous).catch(() => {});
+      return token;
+    } catch (error) {
+      await this.store.delete(token).catch(() => {});
       throw new Error(
         'Could not transfer this map. Temporary browser storage is unavailable or full.',
+        { cause: error },
       );
     }
-    return token;
   }
-  load(token: string) {
-    let entry: unknown;
+  async load(token: string) {
+    let data: Blob;
     try {
-      entry = JSON.parse(this.storage.getItem(MapSession.key) ?? 'null');
-    } catch {
+      if (this.storage.getItem(MapSession.key) !== token)
+        throw new Error('expired');
+      const entry = await this.store.get(token);
+      if (!entry || Date.now() - entry.created >= 86400000) {
+        if (entry) await this.store.delete(token);
+        throw new Error('expired');
+      }
+      data = entry.data;
+    } catch (error) {
       throw new Error(
-        'Could not read the temporary map. Return to Menu and select it again.',
+        'This temporary map has expired or storage is unavailable. Return to Menu and select it again.',
+        { cause: error },
       );
     }
-    if (!Guards.record(entry) || entry.token !== token)
-      throw new Error(
-        'This temporary map has expired. Return to Menu and select it again.',
-      );
-    const level = MapCodec.parseLevel(
-      typeof entry.map === 'string' ? entry.map : JSON.stringify(entry.map),
+    const pack = await LevelPackageCodec.decode(data),
+      level = MapValidator.playable(pack.level);
+    level.background = await BackgroundResources.register(
+      pack.atlas,
+      level.background?.preset ?? 'night',
     );
-    const errors = MapValidator.playErrors(level);
-    if (errors.length) throw new Error(errors.join(' '));
-    return MapValidator.playable(level);
+    return level;
+  }
+  static async cleanup() {
+    await new IndexedPackageStore().sweep(Date.now()).catch(() => {});
   }
 }

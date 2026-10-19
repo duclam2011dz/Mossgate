@@ -1,4 +1,4 @@
-# Mossgate - v1.0.6
+# Mossgate - v1.0.7
 
 A desktop pixel-art platformer with a file-based map editor. Artwork, animation atlases, and layered forest backgrounds are generated locally. No backend, external art, or runtime service is used.
 
@@ -11,19 +11,19 @@ npm ci
 npm run dev
 ```
 
-Choose **Play > Forest Ruins** to start the built-in challenge, or **Open JSON file** for your own map. **Editor** opens an empty map. Canceling file selection leaves the menu unchanged.
+Choose **Play > Forest Ruins** to start the built-in challenge, or **Open level ZIP** for your own packaged map. **Editor** opens an empty map. Canceling file selection leaves the menu unchanged.
 
 Forest Ruins is a 512 x 96, five-stage course: Momentum, Crawl & Break, Spring & Drop, Timing, and Final Gauntlet. Four checkpoints preserve progress across deaths; Restart returns to the beginning. The first-play design target is 5-8 minutes, including observation and retries; the verified optimal input replay takes about 1:41. No human first-play timing has been measured.
 
-Sample JSONs live in `public/maps`: `forest-ruins.json` is the new course, `forest-ruins-legacy.json` preserves the original easy level, and `tile-showcase.json` demonstrates special tiles. Editor Import opens any of these for editing.
+Sample JSONs live in `public/maps`: `forest-ruins.json` is the new course, `forest-ruins-legacy.json` preserves the original easy level, and `tile-showcase.json` demonstrates special tiles. Editor Import opens legacy JSON files or level ZIPs for editing.
 
 ## Pages and temporary maps
 
 Menu is `index.html`, Editor is `editor.html`, and Play is `game.html`. Each has its own HTML, CSS, and TypeScript entry. Direct Play opens Forest Ruins; old hash links redirect to the corresponding page. Relative URLs support deployment below a static-hosting subdirectory.
 
-Imported Play maps use one temporary sessionStorage entry per browser tab. Reload keeps the selected map; choosing another replaces it. Missing tokens, blocked storage, and quota errors are reported instead of loading another map. This is file transfer only: Editor drafts are never saved automatically. Export before leaving Editor; navigation and reload guard unsaved changes.
+Imported Play maps use a temporary IndexedDB Blob package and one sessionStorage token per tab. Reload retains the selection for up to 24 hours; replacing it deletes the old package. Expired packages are cleaned on the next app visit. Storage/token failures are reported explicitly. This is temporary file transfer only: Editor drafts are never saved automatically. Export before leaving Editor; navigation and reload guard unsaved changes.
 
-Menu shows a slowly scrolling forest. Editor pans the same layered scene under a sage wash and grid. Layers repeat horizontally with bounded vertical parallax. Menu scrolls at 24 world units/second even with reduced motion enabled; reduced motion disables decorative tilt and shimmer. Gameplay alone uses background motion blur.
+Menu shows a slowly scrolling forest. **Background** previews Night, Day, or Rain; Apply changes the scene and remembers the Menu choice in the tab. New maps and Forest Ruins start with Night independently of Menu. Editor pans the same layered scene under a sage wash and grid. Layers repeat horizontally with bounded vertical parallax. Menu scrolls at 24 world units/second even with reduced motion enabled; reduced motion disables decorative tilt, shimmer and flowing glass water, and reduces Canvas rain density/speed. Gameplay alone uses background motion blur.
 
 ## Controls
 
@@ -71,7 +71,7 @@ Maps start empty at 160 x 40. Width/height limits are 16 x 12 through 512 x 128.
 - **A/D, W/S:** pan except while typing. Wheel zooms around the pointer; zoom spans 25-400%. Click/drag the minimap to navigate both axes.
 - **Undo / Redo:** Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z, or Ctrl+Y. One transaction per edit; capped at 100 actions and one million changed cells.
 
-Import is editing only; Export downloads JSON, including unfinished drafts. There is no in-editor playtest, local map library, or autosave. Export and use Menu Play to test. Unsaved replacement/navigation requires confirmation.
+Import is editing only; Export downloads a level ZIP, including unfinished drafts. There is no in-editor playtest, local map library, or autosave. Export and use Menu Play > Open level ZIP to test. Unsaved replacement/navigation requires confirmation.
 
 ## Inspector
 
@@ -94,9 +94,19 @@ Editable fields depend on tile kind: material multipliers, spring force, signed 
 
 Changing tile ID clears that cell's overrides; painting the same ID preserves them. Copy/paste carries explicit properties, inheriting type defaults from the destination map. Resize removes out-of-bounds markers/entities after confirmation; undo restores them.
 
+## Backgrounds and level packages
+
+Editor **Background** stages Night, Day, or Rain in a preview dialog. Apply updates the scene and glass immediately as one undoable, dirty-document edit; Cancel leaves the map intact. **Import atlas** accepts a custom PNG after choosing its weather preset. Selecting another preset replaces the custom image with built-in artwork; undo restores it.
+
+Backgrounds have four parallax layers. Day has brighter sunlight and clear glass (18% emerald tint / 3 px blur). Rain has viewport-relative Canvas particles, mist, and DOM glass droplets that merge into running beads with local blur/refraction. Text and controls stay sharp. SVG refraction falls back to CSS blur/highlights; this is a visual approximation, not a physical water simulation. Rain and wet glass continue during pause/results; hidden tabs suspend all clocks. Reduced motion keeps sparse, slower rain and stationary glass beads.
+
+Export downloads `mossgate-map.zip` containing `mossgate-map/level.json` and `mossgate-map/background.png`. The PNG is a 2560 x 1920 atlas: sky / distant on the top row, midground / near below, each 1280 x 960. Custom PNG bytes are preserved. JSON uses `background: {"preset":"night"|"day"|"rain","image":"./background.png"}`. The preset determines weather/glass, independently of custom image content. Only bundled paths are resolved; no remote images are loaded.
+
+Menu accepts ZIP only; Editor also imports legacy JSON v1/v2/v3, defaulting to Night. JSON v4 must travel in its ZIP. ZIP and unpacked content are capped at 24 MiB, JSON at 2 MiB and PNG at 20 MiB. Imports validate archive entries, schema, PNG signature/dimensions and image decoding; encrypted archives, extra files, duplicate entries and unsafe paths are rejected.
+
 ## JSON format
 
-Exports use minified **version 3**; v1/v2 remain readable. Base fields are `size`, nullable `spawn` and `portal`, `deathY`, and `rects`. Rectangles are `[x,y,width,height,tileId]` in tile units; later ones overwrite earlier ones. Spawn/portal/death depth use world units. Export merges equal runs vertically.
+Exports use minified **version 4**; legacy v1/v2/v3 remain readable. Version 4 adds the background descriptor and keeps v3 geometry/properties unchanged. Base fields are `size`, nullable `spawn` and `portal`, `deathY`, and `rects`. Rectangles are `[x,y,width,height,tileId]` in tile units; later ones overwrite earlier ones. Spawn/portal/death depth use world units. Export merges equal runs vertically.
 
 Optional v3 fields:
 
@@ -106,7 +116,7 @@ Optional v3 fields:
 
 Patch keys are `speed`, `acceleration`, `friction`, `springForce`, `conveyor`, `hazard`, `breakable`, `offsetX`, `offsetY`, `width`, `height`, `effectsColor`, `effectsIntensity`, `safeTime`, `warningTime`, `activeTime`, `delay`, `downtime`, and `phase`; only relevant fields are accepted. Missing values inherit; redundant patches and empty collections are omitted. Saw waypoints snap to 16-unit grid nodes and stay within map bounds including radius.
 
-Imports are capped at 2 MiB. Editor accepts incomplete drafts; Play additionally requires clear, supported spawn/portal/checkpoints away from hazards and saw paths. It does not prove reachability. New/Resize defaults death depth to map bottom + 64.
+JSON documents are capped at 2 MiB. Editor accepts incomplete drafts; Play additionally requires clear, supported spawn/portal/checkpoints away from hazards and saw paths. It does not prove reachability. New/Resize defaults death depth to map bottom + 64.
 
 ## Commands and validation
 
@@ -114,7 +124,7 @@ Imports are capped at 2 MiB. Editor accepts incomplete drafts; Play additionally
 | ----------------------------------------- | ----------------------------------------------------------------------- |
 | `npm run dev`                             | Development server                                                      |
 | `npm run build` / `npm run preview`       | Production build / preview                                              |
-| `npm run assets:generate`                 | Generate 42 PNGs and manifest                                           |
+| `npm run assets:generate`                 | Generate 45 PNGs and manifest                                           |
 | `npm run typecheck`                       | Strict TypeScript across domain, browser, tooling and tests             |
 | `npm run lint`                            | Type-aware ESLint, zero warnings                                        |
 | `npm run format` / `npm run format:check` | Format / verify style                                                   |
@@ -126,15 +136,15 @@ Imports are capped at 2 MiB. Editor accepts incomplete drafts; Play additionally
 
 Install Chromium once with `npx playwright install chromium`. E2E starts port 4173 and writes screenshots to `output/playwright`. The legacy course and the full challenge have legal-input traversal tests. Test hooks are excluded from production.
 
-Physics is 60 Hz; sprite clips are 24 FPS. Loading, pause, completion, and errors use keyboard-accessible HTML/CSS glass overlays. Playing has no permanent HUD. Four generated background layers use parallax and a half-resolution buffer with directional blur only on the background. Player, terrain, hazards, and text remain sharp. Reduced motion disables blur, shake, flashes, and CSS motion. Effects remain capped at 512 particles / 64 ambient emitters; tint caches are bounded.
+Physics is 60 Hz; sprite clips are 24 FPS. Loading, pause, completion, and errors use keyboard-accessible HTML/CSS glass overlays. Playing has no permanent HUD. Four generated background layers use parallax and a half-resolution buffer with directional blur only on the background. Player, terrain, hazards, and text remain sharp. Reduced motion disables gameplay blur, shake, flashes and decorative CSS motion; rain remains sparse and slow. Effects remain capped at 512 particles / 64 ambient emitters; tint caches are bounded.
 
 Keep README, ARCHITECTURE, CHANGELOG, and generated assets synchronized. No enemy AI, audio, backend, or persistent map library is included.
 
 ## Glass UI and publishing
 
-Clear emerald glass uses a 32% tint, six-pixel backdrop blur, ivory text, gold accents, and layered shadows. Warm reflections drift gently across surfaces; reduced motion freezes reflections and hidden documents suspend them. Menu scrolling remains enabled. Menu/chooser tilt is limited to four degrees. Editor tools remain stationary; the forest fills the page behind panels and the transparent map canvas. Browser file pickers and unload warnings remain native.
+Night emerald glass uses a 32% tint, six-pixel backdrop blur, ivory text, gold accents, and layered shadows. Day lightens glass and strengthens sunlight reflections; Rain adds wet glass. Warm reflections drift gently across surfaces; reduced motion freezes reflections and hidden documents suspend them. Menu scrolling remains enabled. Menu/chooser tilt is limited to four degrees. Editor tools remain stationary; the forest fills the page behind panels and the transparent map canvas. Browser file pickers and unload warnings remain native.
 
-Source and generated artwork are MIT licensed; see LICENSE. Public repository: https://github.com/duclam2011dz/Mossgate.
+Source and generated artwork are MIT licensed; see LICENSE. Bundled ZIP support retains its BSD notice in `public/THIRD-PARTY-NOTICES.txt`. Public repository: https://github.com/duclam2011dz/Mossgate.
 
 GitHub Actions checks pushes to main, pull requests, version tags, and manual runs on Ubuntu 24.04 / Node 24. It installs locked dependencies, checks types/lint/format before installing Chromium, then runs npm run check:runtime, and retains failure diagnostics for seven days. Official actions are pinned to commit SHAs.
 
@@ -144,4 +154,4 @@ For each release, update package/lockfile and affected docs/changelog together. 
 
 All owned executable source, configuration, generators, and tests use TypeScript 6.0 with full strict checks. `npm run typecheck` checks DOM-free domain/simulation, browser, and tooling/test groups with no emit and no skipped declaration checks. Type-aware lint treats warnings as failures. `npm run check:runtime` runs the runtime stages after these gates; it does not replace type-checking.
 
-Run the generator through `npm run assets:generate` (`tsx scripts/generate-assets.ts`). Its seeded output remains byte-identical to v1.0.5. Dependency package executables keep their published paths; the TypeScript migration applies to project-owned files. Keep external data `unknown` until validated; use draft/playable map and entity/event unions rather than casts or compiler suppressions. Tests under `tests/types` verify contracts during typecheck.
+Generator groups live under `scripts/assets`, sharing core raster/motifs without importing one another. Run the generator through `npm run assets:generate` (`tsx scripts/generate-assets.ts`). Its original 42 seeded PNGs remain byte-identical to v1.0.6; three new scene atlases extend them. Dependency package executables keep their published paths; the TypeScript migration applies to project-owned files. Keep external data `unknown` until validated; use draft/playable map and entity/event unions rather than casts or compiler suppressions. Tests under `tests/types` verify contracts during typecheck.

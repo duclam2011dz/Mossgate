@@ -116,3 +116,14 @@
   opacity: 0;
   pointer-events: none;
 }
+
+.background-choice {
+  border-radius: 16px;
+  min-width: 180px;
+  box-shadow: var(--shadow);
+  background: var(--glass);
+  backdrop-filter: blur(var(--glass-blur));
+}
+.menu:has(.background-dialog[open]) .menu-content {
+  opacity: 0;
+}

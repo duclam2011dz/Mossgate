@@ -1,3 +1,4 @@
+import { levelZip } from '../helpers/package.ts';
 import type { Page } from '@playwright/test';
 import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
@@ -7,11 +8,11 @@ test('menu has only two actions and invalid or cancelled files stay on menu', as
 }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Mossgate' })).toBeVisible();
-  await expect(page.getByRole('button')).toHaveCount(2);
+  await expect(page.getByRole('button')).toHaveCount(3);
   const chooser = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Play', exact: true }).click();
   await page
-    .getByRole('button', { name: 'Open JSON file', exact: true })
+    .getByRole('button', { name: 'Open level ZIP', exact: true })
     .click();
   await chooser;
   await page.locator('#play-file').dispatchEvent('cancel');
@@ -157,9 +158,9 @@ async function startMenuImport(page: Page) {
   );
   await expect(page.locator('#app')).toHaveAttribute('aria-busy', 'false');
   await page.locator('#play-file').setInputFiles({
-    name: 'map.json',
-    mimeType: 'application/json',
-    buffer: data,
+    name: 'map.zip',
+    mimeType: 'application/zip',
+    buffer: await levelZip(data.toString('utf8')),
   });
 }
 test('HiDPI buffers remain bounded', async ({ browser }) => {

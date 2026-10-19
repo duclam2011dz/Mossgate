@@ -33,14 +33,17 @@ export class AssetManager {
   }
   cache = new Map<string, Promise<HTMLImageElement>>();
   async load(group: AssetGroup = 'game'): Promise<Assets> {
+    const foreground = assetNames.filter(
+      (name) => name !== 'background' && !name.startsWith('background-'),
+    );
     const names =
       group === 'background'
-        ? backgroundNames
+        ? []
         : group === 'editor'
-          ? assetNames.filter(
+          ? foreground.filter(
               (n) => !n.startsWith('effect-') && !n.startsWith('player-'),
             )
-          : assetNames;
+          : foreground;
     return Object.fromEntries(
       await Promise.all(
         names.map(async (name) => {

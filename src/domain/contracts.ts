@@ -1,3 +1,8 @@
+export type BackgroundPreset = 'night' | 'day' | 'rain';
+export interface BackgroundSpec {
+  preset: BackgroundPreset;
+  image: string;
+}
 export type TileId =
   0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14;
 export type TileKind = 'empty' | 'solid' | 'hazard' | 'oneway';
@@ -49,6 +54,7 @@ export interface Saw {
 }
 export type Entity = Saw | Checkpoint;
 export interface DraftMap {
+  background?: BackgroundSpec;
   width: number;
   height: number;
   tiles: TileId[][];
@@ -66,7 +72,8 @@ export interface PlayableMap extends DraftMap {
 }
 export type RectangleTuple = [number, number, number, number, TileId];
 export interface WireMap {
-  version: 1 | 2 | 3;
+  version: 1 | 2 | 3 | 4;
+  background?: BackgroundSpec;
   size: PointTuple;
   spawn: PointTuple | null;
   portal: [number, number, number, number] | null;

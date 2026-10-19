@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.7 - 2026-10-19
+
+- Added Night/Day/Rain scene selection, four-layer PNG atlases, Canvas rain/mist and brighter daylight glass.
+- Added bounded DOM wet-glass droplets/refraction with hidden/reduced-motion handling; weather continues during pause/results.
+- Added undoable Editor background previews and custom atlas import; exported ZIPs preserve PNG bytes and JSON v4 metadata.
+- Replaced Menu JSON uploads with validated, bounded level ZIPs; Editor retains legacy JSON support.
+- Added temporary IndexedDB Blob transport with per-tab sessionStorage tokens, reload support and 24-hour expiry.
+- Split deterministic generation into independent OOP groups over shared raster/motif core; kept original 42 PNGs byte-identical.
+- Expanded schema/archive/history/lifecycle/browser/production coverage; kept gameplay, physics and map geometry unchanged.
+
 ## 1.0.6 - 2026-10-19
 
 - Lightened emerald glass and reduced blur; added gentle, phase-offset sunlight reflections with hidden/reduced-motion handling.

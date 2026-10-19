@@ -1,3 +1,4 @@
+import { levelZip } from '../helpers/package.ts';
 import { required } from '../helpers/required.ts';
 import { test, expect } from '@playwright/test';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -45,9 +46,11 @@ test('production pages and imported maps work below a static-hosting subdirector
   await expect(page.locator('.menu')).toBeVisible();
   await expect(page.locator('#app')).toHaveAttribute('aria-busy', 'false');
   await page.locator('#play-file').setInputFiles({
-    name: 'legacy.json',
-    mimeType: 'application/json',
-    buffer: readFileSync('public/maps/forest-ruins-legacy.json'),
+    name: 'legacy.zip',
+    mimeType: 'application/zip',
+    buffer: await levelZip(
+      readFileSync('public/maps/forest-ruins-legacy.json', 'utf8'),
+    ),
   });
   await expect(page).toHaveURL(/\/mossgate\/game.html\?session=/);
   await expect(page.locator('#game-canvas')).toBeFocused();
@@ -124,6 +127,12 @@ test('maximum editor map stays viewport-sized while panning with the forest back
   await page.getByLabel('Zoom', { exact: true }).selectOption('.25');
   await page.locator('[data-tool="fill"]').click();
   await page.locator('#editor-canvas').click({ position: { x: 16, y: 16 } });
+  await page.locator('[data-action="background"]').click();
+  const weather = page.getByRole('dialog', { name: 'Background' });
+  await weather.getByLabel('Background scene').selectOption('rain');
+  await weather.getByRole('button', { name: 'Apply', exact: true }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-scene', 'rain');
+  await page.locator('#editor-canvas').focus();
   await page.keyboard.down('d');
   await page.keyboard.down('s');
   const frames = await page.evaluate(
@@ -168,9 +177,9 @@ test('production glass pause and completion support keyboard and pointer actions
   await page.goto('./');
   await expect(page.locator('#app')).toHaveAttribute('aria-busy', 'false');
   await page.locator('#play-file').setInputFiles({
-    name: 'short.json',
-    mimeType: 'application/json',
-    buffer: Buffer.from(
+    name: 'short.zip',
+    mimeType: 'application/zip',
+    buffer: await levelZip(
       JSON.stringify({
         version: 3,
         size: [16, 12],
@@ -241,4 +250,47 @@ test('production errors and the no-backdrop fallback keep glass content readable
   });
   await page.getByRole('button', { name: 'Play', exact: true }).click();
   await expect(page.locator('#play-options')).toBeVisible();
+});
+
+test('Day and Rain packages preserve scenes, wet glass and fallback below a subdirectory', async ({
+  page,
+}, info) => {
+  for (const preset of ['day', 'rain']) {
+    await page.goto('./');
+    await expect(page.locator('#app')).toHaveAttribute('aria-busy', 'false');
+    const raw: unknown = JSON.parse(
+      readFileSync('public/maps/forest-ruins-legacy.json', 'utf8'),
+    );
+    if (typeof raw !== 'object' || raw === null)
+      throw new Error('Invalid fixture');
+    const text = JSON.stringify({
+      ...raw,
+      version: 4,
+      background: { preset, image: './background.png' },
+    });
+    await page.locator('#play-file').setInputFiles({
+      name: 'scene.zip',
+      mimeType: 'application/zip',
+      buffer: await levelZip(text),
+    });
+    await expect(page.locator('#game-canvas')).toBeFocused();
+    await expect(page.locator('html')).toHaveAttribute('data-scene', preset);
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog', { name: 'Paused' })).toBeVisible();
+    if (preset === 'rain') {
+      await expect
+        .poll(() => page.locator('.water-bead').count())
+        .toBeGreaterThan(0);
+      await page.addStyleTag({
+        content:
+          '.water-bead {backdrop-filter:blur(1.2px) contrast(1.15) !important;}',
+      });
+    }
+    await page.screenshot({
+      path: `output/playwright/v107-${info.project.name}-${preset}-pause.png`,
+    });
+    expect(
+      await page.evaluate(() => '__app' in window || '__game' in window),
+    ).toBe(false);
+  }
 });

@@ -1,7 +1,7 @@
+import { exportedJson, levelZip } from '../helpers/package.ts';
 import { MapCodec } from '../../src/domain/map-codec.ts';
 import { required } from '../helpers/required.ts';
 import { test, expect } from '@playwright/test';
-import { readFileSync } from 'node:fs';
 import { editor, editorSnapshot, importEditor } from './helpers.ts';
 test('draws connected strokes, undoes, redoes and fills a rectangle', async ({
   page,
@@ -98,16 +98,16 @@ test('exported JSON reimports through Play and dirty navigation can be cancelled
   const pending = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export', exact: true }).click();
   const download = await pending;
-  const text = readFileSync(await download.path(), 'utf8');
-  expect(MapCodec.encodeLevel(MapCodec.parseLevel(text)).version).toBe(3);
+  const text = await exportedJson(await download.path());
+  expect(MapCodec.encodeLevel(MapCodec.parseLevel(text)).version).toBe(4);
   expect((await editorSnapshot(page)).dirty).toBe(false);
   await page.getByRole('button', { name: 'Menu', exact: true }).click();
   await expect(page.locator('.menu')).toBeVisible();
   await expect(page.locator('#app')).toHaveAttribute('aria-busy', 'false');
   await page.locator('#play-file').setInputFiles({
-    name: 'exported.json',
-    mimeType: 'application/json',
-    buffer: Buffer.from(text),
+    name: 'exported.zip',
+    mimeType: 'application/zip',
+    buffer: await levelZip(text),
   });
   await expect(page.locator('#game-canvas')).toBeVisible();
 });
@@ -117,7 +117,7 @@ test('draft export is editable but refused by Play; invalid imports preserve the
   await editor(page);
   const pending = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export', exact: true }).click();
-  const text = readFileSync(await (await pending).path(), 'utf8');
+  const text = await exportedJson(await (await pending).path());
   expect(MapCodec.encodeLevel(MapCodec.parseLevel(text)).spawn).toBeNull();
   await page.locator('#editor-file').setInputFiles({
     name: 'bad.json',
@@ -131,9 +131,9 @@ test('draft export is editable but refused by Play; invalid imports preserve the
   await page.getByRole('button', { name: 'Menu', exact: true }).click();
   await expect(page.locator('#app')).toHaveAttribute('aria-busy', 'false');
   await page.locator('#play-file').setInputFiles({
-    name: 'draft.json',
-    mimeType: 'application/json',
-    buffer: Buffer.from(text),
+    name: 'draft.zip',
+    mimeType: 'application/zip',
+    buffer: await levelZip(text),
   });
   await expect(page.getByRole('status')).toContainText('Spawn is not placed');
 });
@@ -222,16 +222,16 @@ test('authors spawn and portal on a new map and exports a playable document', as
   await expect(page.locator('#editor-notice')).toContainText('Ready to play');
   const pending = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export', exact: true }).click();
-  const text = readFileSync(await (await pending).path(), 'utf8');
+  const text = await exportedJson(await (await pending).path());
   const data = MapCodec.encodeLevel(MapCodec.parseLevel(text));
   expect(data.spawn).toEqual([35, 178]);
   expect(data.portal).toEqual([432, 160, 20, 32]);
   await page.getByRole('button', { name: 'Menu', exact: true }).click();
   await expect(page.locator('#app')).toHaveAttribute('aria-busy', 'false');
   await page.locator('#play-file').setInputFiles({
-    name: 'created.json',
-    mimeType: 'application/json',
-    buffer: Buffer.from(text),
+    name: 'created.zip',
+    mimeType: 'application/zip',
+    buffer: await levelZip(text),
   });
   await expect(page.locator('#game-canvas')).toBeFocused();
 });

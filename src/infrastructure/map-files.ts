@@ -1,3 +1,5 @@
+import { LevelPackageCodec } from './level-package.ts';
+import { BackgroundResources } from './background-resources.ts';
 import type { DraftMap, PlayableMap } from '../domain/contracts.ts';
 import { MapValidator } from '../simulation/map-validator.ts';
 import { parseLevel, limits } from '../domain/map-codec.ts';
@@ -18,9 +20,29 @@ export class MapFiles {
     file: File,
     options?: { draft?: boolean },
   ): Promise<DraftMap> {
+    if (!options?.draft || !file.name.toLowerCase().endsWith('.json')) {
+      const pack = await LevelPackageCodec.decode(file);
+      const level = options?.draft
+        ? pack.level
+        : MapValidator.playable(pack.level);
+      level.background = await BackgroundResources.register(
+        pack.atlas,
+        level.background?.preset ?? 'night',
+      );
+      return level;
+    }
     if (file.size > limits.maxBytes)
       throw new Error('Map exceeds the 2 MiB limit.');
-    const level = parseLevel(await file.text(), options);
+    const text = await file.text();
+    const level = parseLevel(text, options);
+    const wire: unknown = JSON.parse(text);
+    if (
+      typeof wire === 'object' &&
+      wire !== null &&
+      'version' in wire &&
+      wire.version === 4
+    )
+      throw new Error('JSON v4 requires its level ZIP with background.png.');
     if (!options?.draft) {
       const errors = playErrors(level);
       if (errors.length) throw new Error(errors.join(' '));

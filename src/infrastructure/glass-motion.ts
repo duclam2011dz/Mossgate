@@ -1,7 +1,9 @@
+import { GlassWeather } from './glass-weather.ts';
 export class GlassMotion {
   motion: MediaQueryList;
   surfaces: HTMLElement[];
   constructor(root: ParentNode, signal: AbortSignal) {
+    new GlassWeather(signal);
     const visibility = () =>
       document.documentElement.toggleAttribute(
         'data-document-hidden',

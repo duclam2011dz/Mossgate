@@ -68,6 +68,7 @@ export class EditorModel {
             ]);
     const meta = (l: DraftMap): Metadata =>
       structuredClone({
+        ...(l.background ? { background: l.background } : {}),
         width: l.width,
         height: l.height,
         spawn: l.spawn,
@@ -122,7 +123,12 @@ export class EditorModel {
       this.level = structuredClone(forward ? command.after : command.before);
     else {
       const meta = forward ? command.after : command.before;
-      for (const key of ['tileDefaults', 'cellOverrides', 'entities'] as const)
+      for (const key of [
+        'tileDefaults',
+        'cellOverrides',
+        'entities',
+        'background',
+      ] as const)
         delete this.level[key];
       Object.assign(this.level, structuredClone(meta));
       for (const [index, before, after] of command.changes) {
@@ -265,6 +271,7 @@ export class EditorModel {
     const old = this.level;
     this.level = {
       ...old,
+      background: { preset: 'night', image: './background.png' },
       width,
       height,
       tiles: Array.from({ length: height }, (_, y) =>
@@ -317,6 +324,7 @@ export class EditorModel {
 export class EditorGeometry {
   static blankLevel(this: void, width = 160, height = 40): DraftMap {
     return {
+      background: { preset: 'night', image: './background.png' },
       width,
       height,
       tiles: Array.from({ length: height }, () => Array<TileId>(width).fill(0)),

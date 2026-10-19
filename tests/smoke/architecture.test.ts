@@ -130,3 +130,24 @@ it('has no forgotten JavaScript and checks every TypeScript file', () => {
     owned.filter((file) => file.endsWith('.ts') && !covered.has(file)),
   ).toEqual([]);
 });
+
+it('keeps asset generator groups independent above their shared core', () => {
+  for (const name of [
+    'terrain',
+    'player',
+    'effects',
+    'background',
+    'entities',
+  ]) {
+    const file = readFileSync(`scripts/assets/${name}.ts`, 'utf8');
+    const imports = ts
+      .createSourceFile(name, file, ts.ScriptTarget.Latest, true)
+      .statements.filter(ts.isImportDeclaration);
+    for (const statement of imports)
+      if (ts.isStringLiteral(statement.moduleSpecifier)) {
+        const path = statement.moduleSpecifier.text;
+        if (path.startsWith('.'))
+          expect(path).toMatch(/^(\.\/core\/|\.\.\/\.\.\/src\/shared\/)/);
+      }
+  }
+});

@@ -124,7 +124,7 @@ describe('map v2', () => {
   });
   it('preserves v1 geometry and uses v2 after editing', () => {
     const encoded = encodeLevel(level);
-    expect(encoded.version).toBe(3);
+    expect(encoded.version).toBe(4);
     expect(decodeLevel(encoded)).toEqual(level);
   });
 });

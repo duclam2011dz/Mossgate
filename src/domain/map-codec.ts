@@ -70,7 +70,7 @@ export class MapCodec {
     if (
       !Guards.record(data) ||
       typeof data.version !== 'number' ||
-      ![1, 2, 3].includes(data.version)
+      ![1, 2, 3, 4].includes(data.version)
     )
       return fail('unsupported version');
     if (!Guards.tuple2(data.size) || !data.size.every(Number.isInteger))
@@ -134,7 +134,7 @@ export class MapCodec {
       portal,
       deathY: data.deathY,
     };
-    if (data.version === 3) {
+    if (data.version === 3 || data.version === 4) {
       const defaults: Record<string, PropertyPatch> = {},
         overrides: Record<string, PropertyPatch> = {};
       if (data.tileDefaults !== undefined) {
@@ -198,6 +198,18 @@ export class MapCodec {
       }
     }
 
+    if (data.version === 4) {
+      const b = data.background;
+      if (
+        !Guards.record(b) ||
+        (b.preset !== 'night' && b.preset !== 'day' && b.preset !== 'rain') ||
+        typeof b.image !== 'string' ||
+        !/^\.\/[a-zA-Z0-9_-]+\.png$/.test(b.image)
+      )
+        return fail('background');
+      level.background = { preset: b.preset, image: b.image };
+    }
+    level.background ??= { preset: 'night', image: './background.png' };
     return level;
   }
   static encodeLevel(this: void, level: DraftMap): WireMap {
@@ -225,7 +237,11 @@ export class MapCodec {
       for (const [key, r] of next) active.set(key, r);
     }
     return {
-      version: 3,
+      version: 4,
+      background: {
+        preset: level.background?.preset ?? 'night',
+        image: './background.png',
+      },
       size: [level.width, level.height],
       spawn: level.spawn ? [level.spawn.x, level.spawn.y] : null,
       portal: level.portal

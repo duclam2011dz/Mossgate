@@ -1,3 +1,4 @@
+import { BackgroundResources } from '../../infrastructure/background-resources.ts';
 import { Dom } from '../../infrastructure/dom.ts';
 import { Guards } from '../../shared/guards.ts';
 import { GameOverlayController } from './overlay.ts';
@@ -13,6 +14,7 @@ const overlay = new GameOverlayController(root, canvas, () =>
   PageNavigation.go('menu'),
 );
 overlay.show('loading');
+void MapSession.cleanup();
 try {
   const params = new URLSearchParams(location.search),
     token = params.get('session');
@@ -23,7 +25,8 @@ try {
       'This temporary map has expired. Return to Menu and select it again.',
     );
   if (token && params.has('map')) throw new Error('Choose one map source.');
-  const level = token ? new MapSession().load(token) : await loadLevel();
+  const level = token ? await new MapSession().load(token) : await loadLevel();
+  await BackgroundResources.load(level.background);
   const controller = new GameController(
     root,
     await assetManager.load('game'),

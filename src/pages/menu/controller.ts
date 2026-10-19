@@ -1,3 +1,7 @@
+import { BackgroundDialog } from '../../infrastructure/background-dialog.ts';
+import { SceneController } from '../../infrastructure/scene-controller.ts';
+import { BackgroundResources } from '../../infrastructure/background-resources.ts';
+import type { BackgroundSpec } from '../../domain/contracts.ts';
 import type { Assets } from '../../infrastructure/assets.ts';
 import { Dom } from '../../infrastructure/dom.ts';
 import { Guards } from '../../shared/guards.ts';
@@ -21,11 +25,22 @@ export class MenuController {
   context: CanvasRenderingContext2D;
   glassMotion: GlassMotion;
   assets: Assets = {};
+  scene: SceneController;
+  private importing = false;
+  selected: BackgroundSpec = { preset: 'night', image: './background.png' };
   view = Viewport.createViewport(1, 1);
   constructor(root: HTMLElement) {
     this.root = root;
     this.abort = new AbortController();
     this.background = new BackgroundRenderer();
+    this.scene = new SceneController(this.background);
+    void MapSession.cleanup();
+    try {
+      const preset = sessionStorage.getItem('mossgate:menu-scene');
+      if (preset === 'day' || preset === 'rain') this.selected.preset = preset;
+    } catch {
+      /* Menu remains usable without storage. */
+    }
     this.camera = { x: 0, y: 0 };
     this.loop = new AnimationLoop((dt) => this.tick(dt));
     this.motion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -83,15 +98,32 @@ export class MenuController {
       async () => {
         const file = input.files?.[0];
         input.value = '';
-        if (!file) return;
+        if (!file || this.importing) return;
+        this.importing = true;
+        root.setAttribute('aria-busy', 'true');
+        const buttons = [...root.querySelectorAll('button')];
+        buttons.forEach((button) => {
+          button.disabled = true;
+        });
+        Dom.require(root, '#menu-message', HTMLElement).textContent =
+          'Opening level ZIP...';
         try {
-          const level = await readMapFile(file);
+          await readMapFile(file);
           if (signal.aborted) return;
-          const token = new MapSession().save(level);
-          PageNavigation.go('game', { session: token });
+          const token = await new MapSession().save(file);
+          if (!signal.aborted) PageNavigation.go('game', { session: token });
         } catch (error) {
-          Dom.require(root, '#menu-message', HTMLElement).textContent =
-            Guards.error(error);
+          if (!signal.aborted)
+            Dom.require(root, '#menu-message', HTMLElement).textContent =
+              Guards.error(error);
+        } finally {
+          this.importing = false;
+          if (!signal.aborted) {
+            root.setAttribute('aria-busy', 'false');
+            buttons.forEach((button) => {
+              button.disabled = false;
+            });
+          }
         }
       },
       { signal },
@@ -102,6 +134,30 @@ export class MenuController {
       () => this.loop.setVisible(!document.hidden),
       { signal },
     );
+    Dom.require(root, '#background-choice', HTMLButtonElement).addEventListener(
+      'click',
+      async () => {
+        const selected = await BackgroundDialog.open(
+          this.selected,
+          signal,
+          false,
+        );
+        if (!selected || signal.aborted) return;
+        try {
+          await this.scene.apply(selected, true);
+          this.selected = selected;
+          try {
+            sessionStorage.setItem('mossgate:menu-scene', selected.preset);
+          } catch {
+            /* Optional preference only. */
+          }
+        } catch (error) {
+          Dom.require(root, '#menu-message', HTMLElement).textContent =
+            Guards.error(error);
+        }
+      },
+      { signal },
+    );
     this.glassMotion = new GlassMotion(root, signal);
     this.resize();
     play.focus();
@@ -109,6 +165,7 @@ export class MenuController {
   }
   async start() {
     try {
+      await this.scene.apply(this.selected);
       this.assets = await assetManager.load('background');
       if (!this.abort.signal.aborted) this.loop.start(!document.hidden);
     } catch (error) {
@@ -135,7 +192,7 @@ export class MenuController {
       this.camera,
       this.view,
       dt,
-      true,
+      this.motion.matches,
       false,
       false,
     );
@@ -143,6 +200,8 @@ export class MenuController {
   dispose() {
     this.abort.abort();
     this.loop.dispose();
+    this.scene.dispose();
     this.background.dispose();
+    BackgroundResources.clear();
   }
 }

@@ -1,3 +1,5 @@
+import type { BackgroundPreset } from '../domain/contracts.ts';
+import { RainRenderer } from './weather.ts';
 import type { Point } from '../domain/contracts.ts';
 import type { Assets } from '../infrastructure/assets.ts';
 import { Dom } from '../infrastructure/dom.ts';
@@ -11,6 +13,19 @@ export class BackgroundRenderer {
   buffer: HTMLCanvasElement;
   context: CanvasRenderingContext2D;
   previous: Point | null = null;
+  private atlas: HTMLImageElement | null = null;
+  private outgoing: HTMLImageElement | null = null;
+  private fade = 1;
+  private preset: BackgroundPreset = 'night';
+  private rain = new RainRenderer();
+  setScene(atlas: HTMLImageElement, preset: BackgroundPreset, animate = false) {
+    if (this.atlas === atlas && this.preset === preset) return;
+    this.outgoing = animate ? this.atlas : null;
+    this.fade = animate ? 0 : 1;
+    this.atlas = atlas;
+    this.preset = preset;
+    this.reset();
+  }
   vx = 0;
   vy = 0;
   constructor() {
@@ -76,23 +91,41 @@ export class BackgroundRenderer {
     }
     ctx.clearRect(0, 0, w, h);
     ctx.imageSmoothingEnabled = false;
-    for (const [name, px, py] of backgroundLayers) {
-      const image = assets[`background-${name}`];
-      if (!image) continue;
-      const sceneHeight = Math.max(240, view.height + 60),
-        period = (sceneHeight * 4) / 3;
-      const x = BackgroundRenderer.offset(camera.x, px, period),
-        y = -Math.max(0, Math.min(60, camera.y * py));
-      for (let dx = x - period; dx < view.width + period; dx += period) {
-        ctx.drawImage(
-          image,
-          (dx / view.width) * w,
-          (y / view.height) * h,
-          (period / view.width) * w,
-          (sceneHeight / view.height) * h,
-        );
+    this.fade = Math.min(1, this.fade + dt / 0.6);
+    if (reduced) this.fade = 1;
+    const scenes =
+      this.outgoing && this.fade < 1
+        ? ([
+            [this.outgoing, 1],
+            [this.atlas, this.fade],
+          ] as const)
+        : ([[this.atlas, 1]] as const);
+    if (this.fade === 1) this.outgoing = null;
+    for (const [atlas, alpha] of scenes) {
+      ctx.globalAlpha = alpha;
+      for (const [index, [name, px, py]] of backgroundLayers.entries()) {
+        const image = atlas ?? assets[`background-${name}`];
+        if (!image) continue;
+        const sceneHeight = Math.max(240, view.height + 60),
+          period = (sceneHeight * 4) / 3;
+        const x = BackgroundRenderer.offset(camera.x, px, period),
+          y = -Math.max(0, Math.min(60, camera.y * py));
+        for (let dx = x - period; dx < view.width + period; dx += period) {
+          ctx.drawImage(
+            image,
+            atlas ? (index % 2) * 1280 : 0,
+            atlas ? Math.floor(index / 2) * 960 : 0,
+            atlas ? 1280 : image.naturalWidth,
+            atlas ? 960 : image.naturalHeight,
+            (dx / view.width) * w,
+            (y / view.height) * h,
+            (period / view.width) * w,
+            (sceneHeight / view.height) * h,
+          );
+        }
       }
     }
+    ctx.globalAlpha = 1;
     if (this.previous && dt > 0 && playing) {
       const blend = 1 - Math.exp(-12 * dt);
       this.vx += ((camera.x - this.previous.x) / dt - this.vx) * blend;
@@ -122,6 +155,7 @@ export class BackgroundRenderer {
       );
     }
     target.restore();
+    if (this.preset === 'rain') this.rain.draw(target, dt, reduced);
   }
   dispose() {
     this.buffer.width = 1;

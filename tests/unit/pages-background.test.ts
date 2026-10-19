@@ -15,41 +15,68 @@ class MemoryStorage {
   }
 }
 describe('temporary map transfer', () => {
-  it('round trips, reloads, and replaces the previous map token', () => {
-    const store = new MemoryStorage(),
-      session = new MapSession(store),
-      token = session.save(level);
-    expect(session.load(token)).toEqual(level);
-    expect(new MapSession(store).load(token)).toEqual(level);
-    const newer = session.save(level);
-    expect(() => session.load(token)).toThrow(/expired/);
-    expect(session.load(newer)).toEqual(level);
-    expect(store.values.size).toBe(1);
+  it('replaces per-tab tokens, removes old blobs and rejects expired tokens', async () => {
+    const storage = new MemoryStorage(),
+      entries = new Map<
+        string,
+        import('../../src/infrastructure/package-store.ts').StoredPackage
+      >();
+    const store: import('../../src/infrastructure/package-store.ts').PackageStore =
+      {
+        put: (entry) => {
+          entries.set(entry.token, entry);
+          return Promise.resolve();
+        },
+        get: (token) => Promise.resolve(entries.get(token)),
+        delete: (token) => {
+          entries.delete(token);
+          return Promise.resolve();
+        },
+        sweep: () => Promise.resolve(),
+      };
+    const session = new MapSession(storage, store),
+      first = await session.save(new Blob(['first'])),
+      second = await session.save(new Blob(['second']));
+    expect(entries.has(first)).toBe(false);
+    expect(entries.has(second)).toBe(true);
+    expect(storage.values.size).toBe(1);
+    await expect(session.load(first)).rejects.toThrow(/expired/);
+    const entry = entries.get(second);
+    if (entry) entry.created = 0;
+    await expect(session.load(second)).rejects.toThrow(/expired/);
+    expect(entries.size).toBe(0);
   });
-  it('reports unavailable storage, invalid tokens, corrupted data and invalid play maps', () => {
-    const broken = {
-      setItem() {
-        throw new Error('quota');
+  it('reports blocked storage without leaving a newly written blob', async () => {
+    const storage = {
+        getItem: () => null,
+        setItem: () => {
+          throw new Error('blocked');
+        },
       },
-      getItem() {
-        throw new Error('blocked');
-      },
-    };
-    expect(() => new MapSession(broken).save(level)).toThrow(
-      /unavailable or full/,
-    );
-    expect(() => new MapSession(broken).load('missing')).toThrow(
-      /Could not read/,
-    );
-    const store = new MemoryStorage(),
-      session = new MapSession(store);
-    expect(() => session.load('missing')).toThrow(/expired/);
-    store.setItem(MapSession.key, '{bad');
-    expect(() => session.load('x')).toThrow(/Could not read/);
-    const token = session.save({ ...level, spawn: null });
-    expect(() => session.load(token)).toThrow(/Spawn/);
+      entries = new Map<
+        string,
+        import('../../src/infrastructure/package-store.ts').StoredPackage
+      >();
+    const store: import('../../src/infrastructure/package-store.ts').PackageStore =
+      {
+        put: (entry) => {
+          entries.set(entry.token, entry);
+          return Promise.resolve();
+        },
+        get: (token) => Promise.resolve(entries.get(token)),
+        delete: (token) => {
+          entries.delete(token);
+          return Promise.resolve();
+        },
+        sweep: () => Promise.resolve(),
+      };
+    await expect(
+      new MapSession(storage, store).save(new Blob(['x'])),
+    ).rejects.toThrow(/unavailable or full/);
+    expect(entries.size).toBe(0);
   });
 });
+
 describe('shared background coordinates', () => {
   it('wraps at exact periods in either direction, including huge offsets', () => {
     for (const x of [-6400, -17, 0, 72, 3200, 1e6]) {

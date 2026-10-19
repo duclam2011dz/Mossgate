@@ -1,3 +1,4 @@
+import { levelZip } from '../helpers/package.ts';
 import { required } from '../helpers/required.ts';
 import { test, expect } from '@playwright/test';
 import { start, editor, editorSnapshot } from './helpers.ts';
@@ -35,9 +36,9 @@ test('blocked storage reports an error on Menu without navigating', async ({
   const { source } = await import('../helpers/level.ts');
   await expect(page.locator('#app')).toHaveAttribute('aria-busy', 'false');
   await page.locator('#play-file').setInputFiles({
-    name: 'map.json',
-    mimeType: 'application/json',
-    buffer: Buffer.from(source),
+    name: 'map.zip',
+    mimeType: 'application/zip',
+    buffer: await levelZip(source),
   });
   await expect(page.getByRole('status')).toContainText(
     'storage is unavailable',
@@ -99,12 +100,12 @@ test('Menu loads only background PNGs and reduced motion still scrolls its backd
     if (r.url().endsWith('.png')) pngs.push(r.url());
   });
   await page.goto('/');
-  await expect.poll(() => pngs.length).toBe(4);
+  await expect.poll(() => pngs.length).toBe(1);
   await page.waitForFunction(
     () =>
       performance
         .getEntriesByType('resource')
-        .filter((e) => e.name.endsWith('.png')).length === 4,
+        .filter((e) => e.name.endsWith('.png')).length === 1,
   );
   await page.waitForFunction(() => {
     const canvas = document.querySelector('#menu-background');
@@ -132,9 +133,7 @@ test('Menu loads only background PNGs and reduced motion still scrolls its backd
       ),
   );
   await expect.poll(checksum).not.toBe(image);
-  expect(
-    pngs.every((p) => /background-(sky|distant|midground|near)\.png$/.test(p)),
-  ).toBe(true);
+  expect(pngs.every((p) => /background-night-atlas\.png$/.test(p))).toBe(true);
 });
 test('map loading errors use HTML overlays and arbitrary built-in names are rejected', async ({
   page,

@@ -1,7 +1,7 @@
+import { exportedJson } from '../helpers/package.ts';
 import { MapCodec } from '../../src/domain/map-codec.ts';
 import { required } from '../helpers/required.ts';
 import { test, expect } from '@playwright/test';
-import { readFileSync } from 'node:fs';
 import { editor, importEditor, editorSnapshot } from './helpers.ts';
 test('edits type and cell properties, cancels scope changes and exports v3', async ({
   page,
@@ -67,9 +67,9 @@ test('edits type and cell properties, cancels scope changes and exports v3', asy
   const pending = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export', exact: true }).click();
   const data = MapCodec.encodeLevel(
-    MapCodec.parseLevel(readFileSync(await (await pending).path(), 'utf8')),
+    MapCodec.parseLevel(await exportedJson(await (await pending).path())),
   );
-  expect(data.version).toBe(3);
+  expect(data.version).toBe(4);
   expect(required(required(data.tileDefaults)[4]).friction).toBe(0);
   expect(
     required(data.cellOverrides).some(
