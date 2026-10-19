@@ -21,8 +21,11 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run format:check
       - run: npx playwright install --with-deps chromium
-      - run: npm run check
+      - run: npm run check:runtime
       - name: Upload failure diagnostics
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

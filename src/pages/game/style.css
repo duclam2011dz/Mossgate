@@ -16,6 +16,7 @@
   background: radial-gradient(ellipse at center, #02160c18, #02160c66);
 }
 .game-panel {
+  position: relative;
   width: min(440px, 100%);
   padding: 38px;
   border-radius: 28px;
@@ -46,6 +47,7 @@
 }
 @media (max-width: 500px) {
   .game-panel {
+    position: relative;
     padding: 28px 22px;
   }
 }

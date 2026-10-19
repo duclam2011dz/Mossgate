@@ -1,4 +1,4 @@
-# Mossgate - v1.0.5
+# Mossgate - v1.0.6
 
 A desktop pixel-art platformer with a file-based map editor. Artwork, animation atlases, and layered forest backgrounds are generated locally. No backend, external art, or runtime service is used.
 
@@ -19,7 +19,7 @@ Sample JSONs live in `public/maps`: `forest-ruins.json` is the new course, `fore
 
 ## Pages and temporary maps
 
-Menu is `index.html`, Editor is `editor.html`, and Play is `game.html`. Each has its own HTML, CSS, and JavaScript entry. Direct Play opens Forest Ruins; old hash links redirect to the corresponding page. Relative URLs support deployment below a static-hosting subdirectory.
+Menu is `index.html`, Editor is `editor.html`, and Play is `game.html`. Each has its own HTML, CSS, and TypeScript entry. Direct Play opens Forest Ruins; old hash links redirect to the corresponding page. Relative URLs support deployment below a static-hosting subdirectory.
 
 Imported Play maps use one temporary sessionStorage entry per browser tab. Reload keeps the selected map; choosing another replaces it. Missing tokens, blocked storage, and quota errors are reported instead of loading another map. This is file transfer only: Editor drafts are never saved automatically. Export before leaving Editor; navigation and reload guard unsaved changes.
 
@@ -115,13 +115,14 @@ Imports are capped at 2 MiB. Editor accepts incomplete drafts; Play additionally
 | `npm run dev`                             | Development server                                                      |
 | `npm run build` / `npm run preview`       | Production build / preview                                              |
 | `npm run assets:generate`                 | Generate 42 PNGs and manifest                                           |
-| `npm run lint`                            | ESLint                                                                  |
+| `npm run typecheck`                       | Strict TypeScript across domain, browser, tooling and tests             |
+| `npm run lint`                            | Type-aware ESLint, zero warnings                                        |
 | `npm run format` / `npm run format:check` | Format / verify style                                                   |
 | `npm test`                                | Physics, codec, editor, properties, animation and traps                 |
 | `npm run test:smoke`                      | Deterministic assets/maps and complete challenge replay                 |
 | `npm run test:e2e`                        | Chromium UI and gameplay workflows                                      |
 | `npm run test:production`                 | Build and test static subdirectory deployment, screenshots, and buffers |
-| `npm run check`                           | All checks, build, E2E, and production checks                           |
+| `npm run check`                           | Typecheck, lint, format, then runtime/build/browser checks              |
 
 Install Chromium once with `npx playwright install chromium`. E2E starts port 4173 and writes screenshots to `output/playwright`. The legacy course and the full challenge have legal-input traversal tests. Test hooks are excluded from production.
 
@@ -131,10 +132,16 @@ Keep README, ARCHITECTURE, CHANGELOG, and generated assets synchronized. No enem
 
 ## Glass UI and publishing
 
-Emerald glass surfaces use local CSS, ivory text, gold accents, layered shadows, and backdrop blur. Menu/chooser tilt is limited to four degrees. Editor tools remain stationary; the forest fills the page behind panels and the transparent map canvas. Browser file pickers and unload warnings remain native.
+Clear emerald glass uses a 32% tint, six-pixel backdrop blur, ivory text, gold accents, and layered shadows. Warm reflections drift gently across surfaces; reduced motion freezes reflections and hidden documents suspend them. Menu scrolling remains enabled. Menu/chooser tilt is limited to four degrees. Editor tools remain stationary; the forest fills the page behind panels and the transparent map canvas. Browser file pickers and unload warnings remain native.
 
 Source and generated artwork are MIT licensed; see LICENSE. Public repository: https://github.com/duclam2011dz/Mossgate.
 
-GitHub Actions checks pushes to main, pull requests, version tags, and manual runs on Ubuntu 24.04 / Node 24. It installs locked dependencies and Chromium, runs npm run check, and retains failure diagnostics for seven days. Official actions are pinned to commit SHAs.
+GitHub Actions checks pushes to main, pull requests, version tags, and manual runs on Ubuntu 24.04 / Node 24. It installs locked dependencies, checks types/lint/format before installing Chromium, then runs npm run check:runtime, and retains failure diagnostics for seven days. Official actions are pinned to commit SHAs.
 
 For each release, update package/lockfile and affected docs/changelog together. Regenerate PNGs if the generator changes, run npm run check, commit and push main, wait for CI, then create and push an annotated vX.Y.Z tag. Verify the tag workflow before handing off. Do not move published release tags. This project does not deploy Pages or publish an npm package.
+
+## TypeScript maintenance
+
+All owned executable source, configuration, generators, and tests use TypeScript 6.0 with full strict checks. `npm run typecheck` checks DOM-free domain/simulation, browser, and tooling/test groups with no emit and no skipped declaration checks. Type-aware lint treats warnings as failures. `npm run check:runtime` runs the runtime stages after these gates; it does not replace type-checking.
+
+Run the generator through `npm run assets:generate` (`tsx scripts/generate-assets.ts`). Its seeded output remains byte-identical to v1.0.5. Keep external data `unknown` until validated; use draft/playable map and entity/event unions rather than casts or compiler suppressions. Tests under `tests/types` verify contracts during typecheck.

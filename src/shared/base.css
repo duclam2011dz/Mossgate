@@ -2,10 +2,10 @@
   --ink: #f1f6e7;
   --muted: #c6d9c8;
   --gold: #edcf8c;
-  --glass: rgba(9, 37, 29, 0.65);
+  --glass: rgba(23, 75, 55, 0.32);
   --glass-light: rgba(67, 109, 82, 0.23);
   --glass-border: rgba(208, 242, 204, 0.25);
-  --glass-blur: 14px;
+  --glass-blur: 6px;
   --radius: 20px;
   --shadow:
     0 24px 70px #020e0ab3, 0 7px 16px #0004, inset 0 1px #edffe733,
@@ -51,7 +51,7 @@ dialog {
   color: var(--ink);
   border: 1px solid var(--glass-border);
   background:
-    linear-gradient(145deg, rgba(99, 147, 107, 0.16), rgba(5, 28, 23, 0.32)),
+    linear-gradient(145deg, rgba(173, 217, 170, 0.07), rgba(5, 28, 23, 0.06)),
     var(--glass);
   box-shadow: var(--shadow);
   backdrop-filter: blur(var(--glass-blur)) saturate(125%);
@@ -222,5 +222,85 @@ dialog p {
   }
   [data-glass-tilt] {
     transform: none !important;
+  }
+}
+
+/* Reflections share a CSS clock: no per-panel animation loops. */
+.glass-surface,
+dialog,
+.editor-bar,
+.palette,
+.editor-status,
+.inspector {
+  isolation: isolate;
+  text-shadow: 0 1px 3px #03180f;
+}
+.glass-surface::before,
+dialog::before,
+.editor-bar::before,
+.palette::before,
+.editor-status::before,
+.inspector::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: -1;
+  background: linear-gradient(
+    118deg,
+    transparent 12%,
+    #ffe6a713 34%,
+    #fff4c02b 35%,
+    #ffeab60a 38%,
+    transparent 64%
+  );
+  background-size: 180% 100%;
+  box-shadow:
+    inset 0 1px #f6ffe36b,
+    inset 1px 0 #fff2cc24;
+  animation: glass-sunlight 22s ease-in-out infinite alternate;
+}
+dialog::before {
+  animation-duration: 26s;
+  animation-delay: -8s;
+}
+.palette::before,
+.inspector::before {
+  animation-duration: 24s;
+  animation-delay: -12s;
+  --reflection-strength: 0.55;
+}
+.editor-bar::before,
+.editor-status::before {
+  animation-duration: 18s;
+  animation-delay: -5s;
+  --reflection-strength: 0.45;
+}
+@keyframes glass-sunlight {
+  from {
+    transform: translateX(-2%);
+    opacity: calc(0.35 * var(--reflection-strength, 1));
+  }
+  to {
+    transform: translateX(2%);
+    opacity: calc(0.9 * var(--reflection-strength, 1));
+  }
+}
+html[data-document-hidden] *,
+html[data-document-hidden] *::before,
+html[data-document-hidden] *::after {
+  animation-play-state: paused !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .glass-surface::before,
+  dialog::before,
+  .editor-bar::before,
+  .palette::before,
+  .editor-status::before,
+  .inspector::before {
+    animation: none;
+    transform: none;
+    opacity: 0.4;
   }
 }

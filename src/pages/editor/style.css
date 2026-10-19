@@ -413,13 +413,12 @@
 #minimap {
   color: var(--ink);
   border-color: var(--glass-border);
-  background:
-    linear-gradient(135deg, #548b5f24, #08281c33), rgba(7, 32, 25, 0.66);
+  background: linear-gradient(135deg, #b0d99b0a, #08281c0a), var(--glass);
   box-shadow:
     0 8px 28px #0003,
     inset 0 1px #ecffdc24;
-  backdrop-filter: blur(12px) saturate(120%);
-  -webkit-backdrop-filter: blur(12px) saturate(120%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(120%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(120%);
 }
 .editor-bar {
   position: relative;

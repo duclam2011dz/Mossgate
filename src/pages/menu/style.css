@@ -34,7 +34,7 @@
       #addca52b,
       transparent 70%
     ),
-    linear-gradient(145deg, #315d3b40, #031c1599), rgba(8, 36, 27, 0.5);
+    var(--glass);
 }
 .menu h1 {
   font:
@@ -91,7 +91,7 @@
       #c6e9b51f,
       transparent 80%
     ),
-    rgba(7, 32, 25, 0.72);
+    var(--glass);
 }
 .dialog-close {
   justify-self: end;
@@ -110,4 +110,9 @@
     min-width: 112px;
     padding: 13px 18px;
   }
+}
+
+.menu:has(.play-options[open]) .menu-content {
+  opacity: 0;
+  pointer-events: none;
 }
