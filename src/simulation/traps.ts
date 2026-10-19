@@ -34,7 +34,8 @@ export class TrapSystem {
       } else if (
         state.missing &&
         run.trapTime >= (state.returnAt ?? Infinity) &&
-        !overlaps(run.player, resolvedBox(level, 14, x, y))
+        !overlaps(run.player, resolvedBox(level, 14, x, y)) &&
+        run.enemies.registry.query(resolvedBox(level, 14, x, y)).length === 0
       )
         run.crumble.delete(key);
     }
@@ -86,6 +87,11 @@ export class TrapSystem {
           supported(level, box, run) &&
           !hazards(level, box).length
         ) {
+          if (!run.healedCheckpoints.has(e.id)) {
+            run.healedCheckpoints.add(e.id);
+            const immunity = run.health.immunity;
+            run.health.reset(immunity);
+          }
           run.checkpoint = e.id;
           run.respawn = spawn;
           run.events.push({

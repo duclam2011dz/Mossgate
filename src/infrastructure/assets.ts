@@ -1,3 +1,5 @@
+import { enemyDefinitions } from '../domain/enemy-definitions.ts';
+import type { EnemySpecies } from '../domain/contracts.ts';
 import { tiles } from '../domain/tiles.ts';
 import { clips, effectNames } from '../shared/asset-definitions.ts';
 export type Assets = Record<string, HTMLImageElement>;
@@ -32,7 +34,10 @@ export class AssetManager {
     return image;
   }
   cache = new Map<string, Promise<HTMLImageElement>>();
-  async load(group: AssetGroup = 'game'): Promise<Assets> {
+  async load(
+    group: AssetGroup = 'game',
+    species: readonly EnemySpecies[] = [],
+  ): Promise<Assets> {
     const foreground = assetNames.filter(
       (name) => name !== 'background' && !name.startsWith('background-'),
     );
@@ -44,6 +49,23 @@ export class AssetManager {
               (n) => !n.startsWith('effect-') && !n.startsWith('player-'),
             )
           : foreground;
+    names.push(
+      ...(group === 'editor'
+        ? Object.keys(enemyDefinitions).map((name) => `enemy-${name}-preview`)
+        : group === 'game'
+          ? [...new Set(species)].flatMap((name) =>
+              ['idle', 'move', 'alert', 'windup', 'attack', 'recover'].map(
+                (state) => `enemy-${name}-${state}`,
+              ),
+            )
+          : []),
+    );
+    if (group === 'game' && species.length)
+      names.push(
+        ...['spore', 'thorn', 'bloom', 'poison', 'slow'].map(
+          (name) => `enemy-effect-${name}`,
+        ),
+      );
     return Object.fromEntries(
       await Promise.all(
         names.map(async (name) => {

@@ -1,7 +1,8 @@
 import { GlassMotion } from '../../infrastructure/glass-motion.ts';
 export type OverlayState =
-  'playing' | 'loading' | 'paused' | 'completed' | 'error';
-export type OverlayAction = 'Resume' | 'Restart' | 'Main Menu' | 'Play Again';
+  'playing' | 'loading' | 'paused' | 'completed' | 'error' | 'defeated';
+export type OverlayAction =
+  'Retry' | 'Resume' | 'Restart' | 'Main Menu' | 'Play Again';
 interface OverlayData {
   elapsed?: number;
   falls?: number;
@@ -24,10 +25,16 @@ export class GameOverlayController {
         message: 'Take a breath. The forest can wait.',
         actions: ['Resume', 'Restart', 'Main Menu'],
       };
+    if (state === 'defeated')
+      return {
+        title: 'Defeated',
+        message: `${minutes}:${seconds} \u00b7 ${run.falls || 0} Deaths`,
+        actions: ['Retry', 'Restart', 'Main Menu'],
+      };
     if (state === 'completed')
       return {
         title: 'Gate reached!',
-        message: `${minutes}:${seconds} · ${run.falls || 0} Deaths`,
+        message: `${minutes}:${seconds} \u00b7 ${run.falls || 0} Deaths`,
         actions: ['Play Again', 'Main Menu'],
       };
     if (state === 'error')
@@ -38,7 +45,7 @@ export class GameOverlayController {
       };
     return {
       title: 'Preparing the forest',
-      message: 'Gathering the paths and light…',
+      message: 'Gathering the paths and light\u2026',
       actions: [],
     };
   }
@@ -92,6 +99,7 @@ export class GameOverlayController {
             : null;
         const action = button?.dataset.gameAction;
         if (
+          action === 'Retry' ||
           action === 'Resume' ||
           action === 'Restart' ||
           action === 'Main Menu' ||

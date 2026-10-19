@@ -18,18 +18,33 @@ void MapSession.cleanup();
 try {
   const params = new URLSearchParams(location.search),
     token = params.get('session');
-  if (params.has('map') && params.get('map') !== 'forest-ruins')
+  if (
+    params.has('map') &&
+    params.get('map') !== 'forest-ruins' &&
+    params.get('map') !== 'wildwood-trials'
+  )
     throw new Error('Unknown built-in map.');
   if (params.has('session') && !token)
     throw new Error(
       'This temporary map has expired. Return to Menu and select it again.',
     );
   if (token && params.has('map')) throw new Error('Choose one map source.');
-  const level = token ? await new MapSession().load(token) : await loadLevel();
+  const level = token
+    ? await new MapSession().load(token)
+    : await loadLevel(
+        params.get('map') === 'wildwood-trials'
+          ? 'wildwood-trials'
+          : 'forest-ruins',
+      );
   await BackgroundResources.load(level.background);
   const controller = new GameController(
     root,
-    await assetManager.load('game'),
+    await assetManager.load(
+      'game',
+      (level.entities ?? []).flatMap((entity) =>
+        entity.type === 'enemy' ? [entity.species] : [],
+      ),
+    ),
     level,
     () => PageNavigation.go('menu'),
     overlay,

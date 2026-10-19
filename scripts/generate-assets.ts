@@ -1,3 +1,4 @@
+import { EnemyGenerator } from './assets/enemies.ts';
 import { PNG } from 'pngjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -9,7 +10,22 @@ import { EffectsGenerator } from './assets/effects.ts';
 import { BackgroundGenerator } from './assets/background.ts';
 import { EntityGenerator } from './assets/entities.ts';
 export const assetManifest = {
-  version: 3,
+  version: 4,
+  enemies: {
+    species: [
+      'bramble-guard',
+      'spore-pod',
+      'root-charger',
+      'thorn-wisp',
+      'vine-moth',
+      'bloom-sentinel',
+    ],
+    states: ['idle', 'move', 'alert', 'windup', 'attack', 'recover'],
+    frames: 12,
+    fps: 24,
+    width: 64,
+    height: 64,
+  },
   atlases: ['night', 'day', 'rain'].map((preset) => ({
     preset,
     file: `background-${preset}-atlas.png`,
@@ -59,6 +75,7 @@ export function generateAssets() {
       ...EffectsGenerator.generate(),
       ...BackgroundGenerator.generate(),
       ...EntityGenerator.generate(),
+      ...EnemyGenerator.generate(),
     }).map(([name, png]) => [name, PNG.sync.write(png)]),
   );
 }

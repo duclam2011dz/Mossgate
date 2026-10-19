@@ -70,7 +70,7 @@ export class MapCodec {
     if (
       !Guards.record(data) ||
       typeof data.version !== 'number' ||
-      ![1, 2, 3, 4].includes(data.version)
+      ![1, 2, 3, 4, 5].includes(data.version)
     )
       return fail('unsupported version');
     if (!Guards.tuple2(data.size) || !data.size.every(Number.isInteger))
@@ -134,7 +134,7 @@ export class MapCodec {
       portal,
       deathY: data.deathY,
     };
-    if (data.version === 3 || data.version === 4) {
+    if (data.version === 3 || data.version === 4 || data.version === 5) {
       const defaults: Record<string, PropertyPatch> = {},
         overrides: Record<string, PropertyPatch> = {};
       if (data.tileDefaults !== undefined) {
@@ -194,11 +194,16 @@ export class MapCodec {
       if (Object.keys(overrides).length) level.cellOverrides = overrides;
       if (data.entities !== undefined) {
         const entities = validateEntities(data.entities, width, height);
+        if (
+          data.version !== 5 &&
+          entities.some((entity) => entity.type === 'enemy')
+        )
+          return fail('enemy entities require version 5');
         if (entities.length) level.entities = entities;
       }
     }
 
-    if (data.version === 4) {
+    if (data.version === 4 || data.version === 5) {
       const b = data.background;
       if (
         !Guards.record(b) ||
@@ -237,7 +242,7 @@ export class MapCodec {
       for (const [key, r] of next) active.set(key, r);
     }
     return {
-      version: 4,
+      version: 5,
       background: {
         preset: level.background?.preset ?? 'night',
         image: './background.png',

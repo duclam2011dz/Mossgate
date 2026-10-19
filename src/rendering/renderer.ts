@@ -160,7 +160,7 @@ export class GameRenderer {
           entity.radius * 2,
           [(Math.floor(run.trapTime * 24) % 12) * 64, 0, 64, 64],
         );
-      } else {
+      } else if (entity.type === 'checkpoint') {
         const [x, y] = entity.position;
         draw(
           assets[
@@ -172,6 +172,77 @@ export class GameRenderer {
           32,
         );
       }
+    }
+    for (const actor of run.enemies.registry.actors.values()) {
+      if (
+        actor.dormant ||
+        actor.x < cx - 40 ||
+        actor.x > cx + viewport.width + 40 ||
+        actor.y < cy - 40 ||
+        actor.y > cy + viewport.height + 40
+      )
+        continue;
+      const state =
+        actor.state === 'patrol' ||
+        actor.state === 'chase' ||
+        actor.state === 'return' ||
+        actor.state === 'search'
+          ? actor.moving
+            ? 'move'
+            : 'idle'
+          : actor.state;
+      ctx.save();
+      ctx.translate(
+        Math.round((actor.x + actor.w / 2 - cx) * sx),
+        Math.round((actor.y + actor.h - cy) * sy),
+      );
+      ctx.scale(actor.facing, 1);
+      draw(
+        assets[`enemy-${actor.definition.species}-${state}`],
+        -16,
+        -32,
+        32,
+        32,
+        [(Math.floor(run.trapTime * 24) % 12) * 64, 0, 64, 64],
+      );
+      ctx.restore();
+      if (actor.state === 'alert' || actor.state === 'windup') {
+        ctx.fillStyle = '#fff2a0';
+        ctx.font = `${Math.max(9, 12 * sy)}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.fillText(
+          '!',
+          (actor.x + actor.w / 2 - cx) * sx,
+          (actor.y - cy - 5) * sy,
+        );
+      }
+      if (
+        actor.state === 'windup' &&
+        (actor.stats.attack === 'charge' || actor.stats.attack === 'dive')
+      ) {
+        ctx.save();
+        ctx.strokeStyle = '#ffe29b99';
+        ctx.lineWidth = sx;
+        ctx.setLineDash([4 * sx, 3 * sx]);
+        ctx.beginPath();
+        ctx.moveTo(
+          (actor.x + actor.w / 2 - cx) * sx,
+          (actor.y + actor.h / 2 - cy) * sy,
+        );
+        ctx.lineTo(
+          (actor.x + actor.w / 2 + actor.aim.x * 70 - cx) * sx,
+          (actor.y + actor.h / 2 + actor.aim.y * 70 - cy) * sy,
+        );
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+    for (const shot of run.enemies.registry.projectiles.values()) {
+      ctx.save();
+      ctx.translate((shot.x + 2 - cx) * sx, (shot.y + 2 - cy) * sy);
+      ctx.rotate(Math.atan2(shot.vy, shot.vx));
+      draw(assets[`enemy-effect-${shot.kind}`], -4, -4, 8, 8);
+      ctx.restore();
     }
     const gate = level.portal;
     draw(assets.portal, gate.x - cx - 6, gate.y - cy, 32, 32);
@@ -196,7 +267,57 @@ export class GameRenderer {
     for (const g of fx.ghosts)
       player(g.x, g.y, g.facing, g.state, g.frame, (1 - g.age / 0.18) * 0.35);
     const p = run.player;
-    player(p.x, p.y + p.h, p.facing, anim.state, anim.frame);
+    player(
+      p.x,
+      p.y + p.h,
+      p.facing,
+      anim.state,
+      anim.frame,
+      run.health.immunity > 0 && !reduced
+        ? 0.65 + Math.sin(run.trapTime * 40) * 0.25
+        : 1,
+    );
+    ctx.save();
+    ctx.globalAlpha = run.state === 'playing' ? 1 : 0.22;
+    const barX = Math.max(
+      3,
+      Math.min(viewport.width - 31, p.x + p.w / 2 - cx - 14),
+    );
+    const barY = Math.max(10, Math.min(viewport.height - 25, p.y - cy - 10));
+    ctx.fillStyle = '#071d20dd';
+    ctx.fillRect(barX * sx, barY * sy, 28 * sx, 4 * sy);
+    ctx.fillStyle =
+      run.health.hp <= 25
+        ? '#f07b72'
+        : run.health.hp <= 50
+          ? '#e8c373'
+          : '#a6db9a';
+    ctx.fillRect(
+      (barX + 1) * sx,
+      (barY + 1) * sy,
+      ((26 * run.health.hp) / 100) * sx,
+      2 * sy,
+    );
+    ctx.font = `${Math.max(6, 6 * sy)}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#f4f4d8';
+    ctx.fillText(`${run.health.hp}%`, (barX + 14) * sx, (barY - 2) * sy);
+    let statusX = barX;
+    for (const [kind, remaining] of [
+      ['poison', run.health.poison],
+      ['slow', run.health.slow],
+    ] as const) {
+      if (remaining <= 0) continue;
+      draw(assets[`enemy-effect-${kind}`], statusX, barY + 6, 6, 6);
+      ctx.textAlign = 'left';
+      ctx.fillText(
+        `${Math.ceil(remaining)}s`,
+        (statusX + 6) * sx,
+        (barY + 12) * sy,
+      );
+      statusX += 15;
+    }
+    ctx.restore();
     for (const part of fx.particles) {
       const index = effectNames.indexOf(part.kind);
       if (index < 0) continue;

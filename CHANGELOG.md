@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.8 - 2026-10-20
+
+- Added finite wet-glass growth/merge/run/fade/rebirth lifecycles, independent fading trails, persistent surface models and reduced-motion opacity renewal.
+- Rebalanced Choose a map with aligned header/close control, described built-in choices and a separated ZIP action.
+- Added six generated forest enemy species, bounded registry/navigation/projectiles, telegraphed attacks and terrain-aware perception/movement.
+- Added player HP, poison/slow, hit feedback, checkpoint healing and Defeated/Retry flow while preserving immediate lethal-hazard respawns.
+- Added authored enemy tools, Inspector overrides/patrols, full-path clipboard/history support and JSON v5; kept ZIP v4 compatibility.
+- Added Day Wildwood Trials and an importable sample ZIP; fixed Resize resetting the background.
+- Preserved the 45 existing PNGs and previous map geometry; added enemy sprites/effects and regression/replay coverage.
+
 ## 1.0.7 - 2026-10-19
 
 - Added Night/Day/Rain scene selection, four-layer PNG atlases, Canvas rain/mist and brighter daylight glass.

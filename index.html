@@ -23,12 +23,39 @@
           <p id="menu-message" role="status"></p>
         </div>
         <dialog id="play-options" class="play-options" data-glass-tilt>
-          <button class="dialog-close" aria-label="Close play choices">
-            Close
-          </button>
-          <h2>Choose a map</h2>
-          <button id="sample-map" class="primary">Forest Ruins</button
-          ><button id="open-map">Open level ZIP</button>
+          <div class="chooser-header">
+            <h2>Choose a map</h2>
+            <button class="dialog-close" aria-label="Close play choices">
+              X
+            </button>
+          </div>
+          <div class="map-choices">
+            <button
+              id="sample-map"
+              class="map-choice primary"
+              aria-label="Forest Ruins"
+              aria-describedby="forest-description"
+            >
+              <strong>Forest Ruins</strong
+              ><span id="forest-description"
+                >Five forest stages &middot; classic platforming</span
+              >
+            </button>
+            <button
+              id="wildwood-map"
+              class="map-choice"
+              aria-label="Wildwood Trials"
+              aria-describedby="wildwood-description"
+            >
+              <strong>Wildwood Trials</strong
+              ><span id="wildwood-description"
+                >Six wild species &middot; survive and reach the gate</span
+              >
+            </button>
+          </div>
+          <div class="map-import">
+            <button id="open-map">Open level ZIP</button>
+          </div>
         </dialog>
         <input
           id="play-file"

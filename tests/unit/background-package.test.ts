@@ -14,7 +14,7 @@ async function archive(entries: [string, Blob][]) {
   return await writer.close();
 }
 describe('background contracts', () => {
-  it('upgrades old drafts to Night and exports compact v4', () => {
+  it('upgrades old drafts to Night and exports compact v5', () => {
     const old = {
       version: 2,
       size: [16, 12],
@@ -28,7 +28,7 @@ describe('background contracts', () => {
       preset: 'night',
       image: './background.png',
     });
-    expect(MapCodec.encodeLevel(level).version).toBe(4);
+    expect(MapCodec.encodeLevel(level).version).toBe(5);
   });
   it.each(['storm', 'DAY', null, 4])('rejects unknown scene %j', (preset) => {
     const wire = MapCodec.encodeLevel(blankLevel());

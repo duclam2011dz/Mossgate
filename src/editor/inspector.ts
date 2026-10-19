@@ -1,3 +1,9 @@
+import { entityFits, translateEntity } from '../domain/entity-geometry.ts';
+import {
+  enemyStats,
+  enemyOverrideLimits,
+} from '../domain/enemy-definitions.ts';
+import type { EnemyOverrides } from '../domain/contracts.ts';
 import { tiles } from '../domain/tiles.ts';
 import {
   baseProperties,
@@ -90,6 +96,9 @@ export class TileInspector {
             this.load();
           }
           this.render();
+        } else if (e.target.matches('[data-facing]')) {
+          this.collect();
+          this.hasPendingChanges = true;
         } else if (e.target.matches('[data-direction]')) {
           this.collect();
           this.draft.conveyor =
@@ -120,6 +129,64 @@ export class TileInspector {
           this.expanded = !this.expanded;
           this.render();
           Dom.require(this.host, '[data-expand]', HTMLButtonElement).focus();
+        } else if (target.closest('[data-duplicate]') && this.entityDraft) {
+          if (this.hasPendingChanges) {
+            this.error('Apply or cancel changes before duplicating.');
+            return;
+          }
+          const model = this.getModel(),
+            entity = translateEntity(this.entityDraft, 16, 0);
+          let n = 1;
+          const prefix = entity.id.slice(0, 48);
+          while (
+            model.level.entities?.some((e) => e.id === `${prefix}-copy-${n}`)
+          )
+            n++;
+          entity.id = `${prefix}-copy-${n}`;
+          if (!entityFits(entity, model.level.width, model.level.height)) {
+            this.error('The complete entity must fit inside the map.');
+            return;
+          }
+          try {
+            const list = validateEntities(
+              [...(model.level.entities ?? []), entity],
+              model.level.width,
+              model.level.height,
+            );
+            model.begin();
+            model.level.entities = list;
+            model.commit();
+            this.onChange();
+          } catch (error) {
+            this.error(Guards.error(error));
+          }
+        } else if (target.closest('[data-add-enemy-point]')) {
+          this.collect();
+          const draft = this.entityDraft;
+          if (
+            draft?.type === 'enemy' &&
+            enemyStats(draft).flying &&
+            draft.patrol.length < 16
+          ) {
+            const last = draft.patrol.at(-1);
+            if (last) draft.patrol.push([...last]);
+            this.hasPendingChanges = true;
+            this.render();
+          }
+        } else if (target.closest('[data-remove-enemy-point]')) {
+          this.collect();
+          const draft = this.entityDraft;
+          if (draft?.type === 'enemy' && draft.patrol.length > 2) {
+            draft.patrol.splice(
+              Number(
+                target.closest<HTMLElement>('[data-remove-enemy-point]')
+                  ?.dataset.removeEnemyPoint,
+              ),
+              1,
+            );
+            this.hasPendingChanges = true;
+            this.render();
+          }
         } else if (target.closest('[data-add-point]')) {
           this.collect();
           const draft = this.entityDraft;
@@ -295,6 +362,33 @@ export class TileInspector {
       const mode =
         this.host.querySelector<HTMLSelectElement>('[data-mode]')?.value;
       if (mode === 'loop' || mode === 'ping-pong') entity.mode = mode;
+    } else if (entity?.type === 'enemy') {
+      const row = this.host.querySelector('[data-spawn]');
+      if (row)
+        entity.spawn = [
+          Number(Dom.require(row, '[data-x]', HTMLInputElement).value),
+          Number(Dom.require(row, '[data-y]', HTMLInputElement).value),
+        ];
+      entity.facing =
+        this.host.querySelector<HTMLSelectElement>('[data-facing]')?.value ===
+        '-1'
+          ? -1
+          : 1;
+      entity.patrol = [...this.host.querySelectorAll('[data-enemy-point]')].map(
+        (point) => [
+          Number(Dom.require(point, '[data-x]', HTMLInputElement).value),
+          Number(Dom.require(point, '[data-y]', HTMLInputElement).value),
+        ],
+      );
+      const overrides: EnemyOverrides = {};
+      for (const input of this.host.querySelectorAll<HTMLInputElement>(
+        '[data-enemy-field]',
+      )) {
+        const key = input.dataset.enemyField;
+        if (key && Object.hasOwn(enemyOverrideLimits, key))
+          overrides[key as keyof EnemyOverrides] = Number(input.value);
+      }
+      entity.overrides = overrides;
     } else if (entity?.type === 'checkpoint') {
       const row = this.host.querySelector('[data-position]');
       if (row)
@@ -423,7 +517,12 @@ export class TileInspector {
       const entity = this.getLevel().entities?.find(
           (e) => e.id === target.entity,
         ),
-        p = entity?.type === 'saw' ? entity.path[0] : entity?.position;
+        p =
+          entity?.type === 'saw'
+            ? entity.path[0]
+            : entity?.type === 'enemy'
+              ? entity.spawn
+              : entity?.position;
       if (!p) {
         this.close();
         return;
@@ -472,6 +571,19 @@ export class TileInspector {
     if (!draft) return '';
     if (draft.type === 'checkpoint')
       return `<p class="property-help">Respawn feet position</p><div data-position class="point-row"><label>X<input data-x type="number" step="8" aria-label="Checkpoint X" value="${draft.position[0]}"></label><label>Y<input data-y type="number" step="8" aria-label="Checkpoint Y" value="${draft.position[1]}"></label></div>`;
+    if (draft.type === 'enemy') {
+      const stats = enemyStats(draft);
+      return `<p class="property-help">${stats.name} | ${stats.attack} | ${stats.flying ? 'Flying' : 'Ground'} | ${stats.w}x${stats.h} | ${stats.windup}s windup | ${stats.flying ? '270' : '120'} degrees vision</p>
+        <label>Facing<select data-facing><option value="1" ${draft.facing === 1 ? 'selected' : ''}>Right</option><option value="-1" ${draft.facing === -1 ? 'selected' : ''}>Left</option></select></label>
+        <div data-spawn class="point-row"><label>Spawn X<input data-x type="number" value="${draft.spawn[0]}"></label><label>Spawn Y<input data-y type="number" value="${draft.spawn[1]}"></label></div>
+        ${Object.entries(enemyOverrideLimits)
+          .map(([key, limits]) => {
+            const name = key as keyof EnemyOverrides;
+            return `<label>${key}<input data-enemy-field="${key}" type="number" min="${limits[0]}" max="${limits[1]}" step="0.05" value="${stats[name]}"></label>`;
+          })
+          .join('')}
+        <h3>Patrol</h3>${draft.patrol.map(([x, y], i) => `<div data-enemy-point class="point-row"><label>X ${i + 1}<input data-x type="number" value="${x}"></label><label>Y ${i + 1}<input data-y type="number" value="${y}"></label>${stats.flying ? `<button data-remove-enemy-point="${i}" aria-label="Remove patrol point ${i + 1}">X</button>` : ''}</div>`).join('')}${stats.flying ? '<button data-add-enemy-point>Add patrol point</button>' : ''}`;
+    }
     const fields: [
       'speed' | 'radius' | 'phase',
       string,
@@ -521,10 +633,12 @@ export class TileInspector {
       target.kind === 'entity'
         ? this.entityDraft?.type === 'saw'
           ? 'Moving saw'
-          : 'Checkpoint'
+          : this.entityDraft?.type === 'enemy'
+            ? enemyStats(this.entityDraft).name
+            : 'Checkpoint'
         : (tile?.name ?? '');
     this.host.innerHTML = `<div class="inspector-heading"><div>${tile ? `<img alt="" src="${this.assets[tile.asset ?? '']?.src ?? ''}">` : ''}<h2>${title}</h2></div><button data-close aria-label="Close inspector">Close</button></div><div class="inspector-content">${target.kind === 'entity' ? `<p class="property-help">${target.entity}</p>${this.entityForm()}` : `<label class="scope-label">Scope<select aria-label="Property scope"><option value="type" ${target.scope === 'type' ? 'selected' : ''}>Tile type in this map</option><option value="cell" ${target.scope === 'cell' ? 'selected' : ''}>This cell</option></select></label>${this.expanded ? `<p class="property-help">ID ${target.id} | ${tile?.kind} | ${tile?.asset}.png | Cell ${target.x}, ${target.y}</p>` : ''}${shown.map(this.field).join('')}${[9, 10].includes(target.id) && this.expanded ? '<label>Direction<select aria-label="Conveyor direction" data-direction><option value="-1">Left</option><option value="1">Right</option></select></label>' : ''}${this.expanded ? '<p class="property-help">Changing the hitbox can make collision differ from the sprite.</p>' : ''}`}
-  <p role="status" class="property-error"></p></div><div class="inspector-actions"><button data-apply class="primary">Apply</button><button data-cancel>Cancel</button>${target.kind === 'entity' ? '<button data-delete>Delete</button>' : '<button data-reset>Reset</button>'}</div><button class="show-more" data-expand>${this.expanded ? 'Show less' : 'Show more...'}</button>`;
+  <p role="status" class="property-error"></p></div><div class="inspector-actions"><button data-apply class="primary">Apply</button><button data-cancel>Cancel</button>${target.kind === 'entity' ? '<button data-duplicate>Duplicate</button><button data-delete>Delete</button>' : '<button data-reset>Reset</button>'}</div><button class="show-more" data-expand>${this.expanded ? 'Show less' : 'Show more...'}</button>`;
     const direction =
       this.host.querySelector<HTMLSelectElement>('[data-direction]');
     if (direction) direction.value = this.draft.conveyor < 0 ? '-1' : '1';

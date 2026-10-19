@@ -81,7 +81,7 @@ describe('effective properties and v3', () => {
     l.cellOverrides = { '1,30': { speed: 0.5, friction: 0 } };
     l.entities = [{ id: 'flag', type: 'checkpoint', position: [56, 480] }];
     const data = encodeLevel(l);
-    expect(data.version).toBe(4);
+    expect(data.version).toBe(5);
     expect(required(data.tileDefaults)[4]).toEqual({ speed: 0.5 });
     expect(required(data.cellOverrides)[0]).toEqual([1, 30, { friction: 0 }]);
     const result = decodeLevel(data);

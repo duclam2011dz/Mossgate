@@ -1,3 +1,4 @@
+import { enemyStats } from '../domain/enemy-definitions.ts';
 import type { Box } from '../domain/contracts.ts';
 import { AssetManager } from '../infrastructure/assets.ts';
 import type { EditorController } from './controller.ts';
@@ -142,7 +143,54 @@ export class EditorRenderer {
           (entity.radius / 8) * unit,
           (entity.radius / 8) * unit,
         );
-      } else {
+      } else if (entity.type === 'enemy') {
+        const [x, y] = entity.spawn;
+        editor.ctx.drawImage(
+          AssetManager.image(editor.assets, `enemy-${entity.species}-preview`),
+          (x / 16 - editor.camera.x - 0.5) * unit,
+          (y / 16 - editor.camera.y - 0.75) * unit,
+          unit * 2,
+          unit * 2,
+        );
+        if (
+          editor.inspector.selectionTarget?.kind === 'entity' &&
+          editor.inspector.selectionTarget.entity === entity.id
+        ) {
+          const stats = enemyStats(entity);
+          const cx = (x / 16 - editor.camera.x + stats.w / 32) * unit,
+            cy = (y / 16 - editor.camera.y + stats.h / 32) * unit;
+          editor.ctx.save();
+          editor.ctx.strokeStyle = '#c2d8ab44';
+          editor.ctx.setLineDash([4, 6]);
+          editor.ctx.beginPath();
+          editor.ctx.arc(cx, cy, (stats.leash / 16) * unit, 0, Math.PI * 2);
+          editor.ctx.stroke();
+          const angle = entity.facing === 1 ? 0 : Math.PI,
+            half = ((stats.flying ? 135 : 60) * Math.PI) / 180;
+          editor.ctx.strokeStyle = '#f2d99d88';
+          editor.ctx.beginPath();
+          editor.ctx.moveTo(cx, cy);
+          editor.ctx.arc(
+            cx,
+            cy,
+            (stats.detectionRange / 16) * unit,
+            angle - half,
+            angle + half,
+          );
+          editor.ctx.closePath();
+          editor.ctx.stroke();
+          editor.ctx.restore();
+          editor.ctx.strokeStyle = '#d5dc8e';
+          editor.ctx.beginPath();
+          entity.patrol.forEach(([px, py], i) => {
+            const ax = (px / 16 - editor.camera.x) * unit,
+              ay = (py / 16 - editor.camera.y) * unit;
+            if (i === 0) editor.ctx.moveTo(ax, ay);
+            else editor.ctx.lineTo(ax, ay);
+          });
+          editor.ctx.stroke();
+        }
+      } else if (entity.type === 'checkpoint') {
         const [x, y] = entity.position;
         editor.ctx.drawImage(
           AssetManager.image(editor.assets, 'checkpoint'),

@@ -101,6 +101,10 @@ export class EffectsSystem {
             : event.id === 9 || event.id === 10
               ? 'spark'
               : 'dust';
+      if (event.type === 'hit') {
+        eventBurst(fx, 'spark', event.x, event.y - 6, 14, 32);
+        if (!reduced) fx.shake = 0.08;
+      }
       if (event.type === 'checkpoint') {
         eventBurst(fx, 'ring', event.x, event.y, 1, 0);
         eventBurst(fx, 'spark', event.x, event.y, 24, 35);

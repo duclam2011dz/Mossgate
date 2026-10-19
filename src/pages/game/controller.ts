@@ -159,7 +159,17 @@ export class GameController {
     this.focus();
   };
   action = (label: OverlayAction) => {
-    if (label === 'Resume') this.resume();
+    if (label === 'Retry') {
+      this.run.retry();
+      this.overlay.hide();
+      this.input.clear();
+      this.anim = createAnimation();
+      this.fx = createEffects();
+      this.accumulator = 0;
+      this.last = performance.now();
+      this.sync(true);
+      this.focus();
+    } else if (label === 'Resume') this.resume();
     else if (label === 'Main Menu') this.onMenu();
     else this.restart();
   };
@@ -192,9 +202,9 @@ export class GameController {
         this.run.broken,
       );
     }
-    if (event === 'completed') {
+    if (event === 'completed' || event === 'defeated') {
       this.input.clear();
-      this.overlay.show('completed', this.run);
+      this.overlay.show(event, this.run);
     }
     return event;
   };
@@ -208,7 +218,7 @@ export class GameController {
         const event = this.simulate(this.input.read());
         this.accumulator -= c.step;
         count++;
-        if (event === 'completed') break;
+        if (event === 'completed' || event === 'defeated') break;
       }
       if (count === 5) this.accumulator = 0;
     }

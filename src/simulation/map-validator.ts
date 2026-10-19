@@ -1,3 +1,5 @@
+import { enemyDefinitions } from '../domain/enemy-definitions.ts';
+import { entityFits } from '../domain/entity-geometry.ts';
 import type { DraftMap, PlayableMap, Box } from '../domain/contracts.ts';
 import { MapCodec } from '../domain/map-codec.ts';
 import { solidTiles, supported, hazards } from './collision.ts';
@@ -86,6 +88,26 @@ export class MapValidator {
           sawCrosses(box)
         )
           problems.push(`Checkpoint ${entity.id} must be clear and supported.`);
+      }
+    for (const entity of level.entities ?? [])
+      if (entity.type === 'enemy') {
+        const stats = enemyDefinitions[entity.species];
+        if (!entityFits(entity, level.width, level.height)) {
+          problems.push(`Enemy ${entity.id} extends outside the map.`);
+          continue;
+        }
+        for (const [x, y] of [entity.spawn, ...entity.patrol]) {
+          const box = { x, y, w: stats.w, h: stats.h };
+          if (
+            solidTiles(level, box).some((t) => t.id !== 8) ||
+            (!stats.flying && !supported(level, box))
+          ) {
+            problems.push(
+              `Enemy ${entity.id} needs clear ${stats.flying ? 'flight' : 'supported ground'} waypoints.`,
+            );
+            break;
+          }
+        }
       }
     return problems;
   }

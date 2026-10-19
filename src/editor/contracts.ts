@@ -2,7 +2,7 @@ import type { Point, Box } from '../domain/contracts.ts';
 import type { Clipboard } from './model.ts';
 export type PaintTool =
   'brush' | 'erase' | 'fill' | 'rectangle' | 'select' | 'spawn' | 'portal';
-export type Tool = PaintTool | 'inspect' | 'saw' | 'checkpoint';
+export type Tool = PaintTool | 'inspect' | 'saw' | 'checkpoint' | 'enemy';
 export type Gesture =
   | { type: PaintTool; start: Point; last: Point; end: Point }
   | { type: 'move'; start: Point; source: Box }

@@ -1,3 +1,9 @@
+import {
+  isEnemySpecies,
+  enemyOverrideLimits,
+  enemyDefinitions,
+} from './enemy-definitions.ts';
+import type { EnemyOverrides } from './contracts.ts';
 import type {
   Point,
   Box,
@@ -39,6 +45,7 @@ export class EntitySystem {
     if (!Array.isArray(raw) || raw.length > 256)
       throw new Error('Invalid entities (maximum 256).');
     const ids = new Set<string>();
+    let enemies = 0;
     const point = (p: unknown): p is PointTuple =>
       Guards.tuple2(p) &&
       p[0] >= 0 &&
@@ -66,6 +73,51 @@ export class EntitySystem {
           id: value.id,
           type: 'checkpoint',
           position: [...value.position],
+        };
+      }
+      if (value.type === 'enemy') {
+        if (
+          ++enemies > 64 ||
+          !isEnemySpecies(value.species) ||
+          !point(value.spawn) ||
+          (value.facing !== -1 && value.facing !== 1) ||
+          !Array.isArray(value.patrol) ||
+          value.patrol.length < 2 ||
+          value.patrol.length > 16 ||
+          !value.patrol.every(point)
+        )
+          throw new Error('Invalid enemy definition (maximum 64 enemies).');
+        if (
+          ['bramble-guard', 'spore-pod', 'root-charger'].includes(
+            value.species,
+          ) &&
+          (value.patrol.length !== 2 ||
+            value.patrol[0]?.[1] !== value.patrol[1]?.[1])
+        )
+          throw new Error('Ground patrol requires two horizontal endpoints.');
+        const overrides: EnemyOverrides = {};
+        if (value.overrides !== undefined) {
+          if (!Guards.record(value.overrides))
+            throw new Error('Invalid enemy overrides.');
+          for (const [key, number] of Object.entries(value.overrides)) {
+            if (!Object.hasOwn(enemyOverrideLimits, key))
+              throw new Error('Unknown enemy override.');
+            const name = key as keyof EnemyOverrides;
+            const [min, max] = enemyOverrideLimits[name];
+            if (!Guards.number(number) || number < min || number > max)
+              throw new Error('Enemy override outside limits.');
+            if (number !== enemyDefinitions[value.species][name])
+              overrides[name] = number;
+          }
+        }
+        return {
+          id: value.id,
+          type: 'enemy',
+          species: value.species,
+          spawn: [...value.spawn],
+          facing: value.facing,
+          patrol: structuredClone(value.patrol),
+          ...(Object.keys(overrides).length ? { overrides } : {}),
         };
       }
       if (value.type !== 'saw') throw new Error('Unsupported entity type.');

@@ -1,3 +1,8 @@
+import {
+  isEnemySpecies,
+  enemyDefinitions,
+} from '../domain/enemy-definitions.ts';
+import type { EnemySpecies } from '../domain/contracts.ts';
 import { BackgroundDialog } from '../infrastructure/background-dialog.ts';
 import { BackgroundResources } from '../infrastructure/background-resources.ts';
 import { SceneController } from '../infrastructure/scene-controller.ts';
@@ -69,6 +74,7 @@ export class EditorController {
   backdrop: HTMLCanvasElement;
   backdropContext: CanvasRenderingContext2D;
   leaving: boolean;
+  enemySpecies: EnemySpecies = 'bramble-guard';
   pathDraft: PointTuple[];
   entitySerial: number;
   project: (x: number, y: number) => Anchor;
@@ -218,6 +224,24 @@ export class EditorController {
           );
           return;
         }
+        if (this.tool === 'enemy') {
+          const stats = enemyDefinitions[this.enemySpecies];
+          const x = cell.x * 16,
+            y = (cell.y + 1) * 16 - stats.h;
+          const span = stats.patrolRange / 2;
+          this.addEntity({
+            id: this.entityId('enemy'),
+            type: 'enemy',
+            species: this.enemySpecies,
+            spawn: [x, y],
+            facing: 1,
+            patrol: [
+              [Math.max(0, x - span), y],
+              [Math.min(this.model.level.width * 16 - stats.w, x + span), y],
+            ],
+          });
+          return;
+        }
         if (this.tool === 'checkpoint') {
           this.addEntity({
             id: this.entityId('checkpoint'),
@@ -321,7 +345,18 @@ export class EditorController {
                 Math.min((this.model.level.height - 1) * 16, this.hover.y * 16),
               ),
             ];
-          else
+          else if (entity.type === 'enemy') {
+            const next: PointTuple = [
+              this.hover.x * 16,
+              (this.hover.y + 1) * 16 - enemyDefinitions[entity.species].h,
+            ];
+            if (this.gesture.index === 0) {
+              const dx = next[0] - entity.spawn[0],
+                dy = next[1] - entity.spawn[1];
+              entity.spawn = next;
+              entity.patrol = entity.patrol.map(([x, y]) => [x + dx, y + dy]);
+            } else entity.patrol[this.gesture.index - 1] = next;
+          } else if (entity.type === 'checkpoint')
             entity.position = [this.hover.x * 16 + 8, (this.hover.y + 1) * 16];
           return;
         }
@@ -445,9 +480,16 @@ export class EditorController {
             'inspect',
             'saw',
             'checkpoint',
+            'enemy',
           ].includes(t.dataset.tool)
         )
           await this.setTool(t.dataset.tool as Tool);
+        const enemyChoice =
+          e.target.closest<HTMLElement>('[data-enemy]')?.dataset.enemy;
+        if (isEnemySpecies(enemyChoice)) {
+          this.enemySpecies = enemyChoice;
+          await this.setTool('enemy');
+        }
         if (choice) {
           const id = Number(choice.dataset.tile);
           if (!Number.isInteger(id) || !tiles[id]) return;
@@ -520,11 +562,15 @@ export class EditorController {
                 entity.type === 'checkpoint'
                   ? entity.position[0] + 5 > w * 16 ||
                     entity.position[1] > h * 16
-                  : entity.path.some(
-                      ([x, y]) =>
-                        x + entity.radius > w * 16 ||
-                        y + entity.radius > h * 16,
-                    ),
+                  : entity.type === 'enemy'
+                    ? [entity.spawn, ...entity.patrol].some(
+                        ([x, y]) => x + 16 > w * 16 || y + 20 > h * 16,
+                      )
+                    : entity.path.some(
+                        ([x, y]) =>
+                          x + entity.radius > w * 16 ||
+                          y + entity.radius > h * 16,
+                      ),
               )) &&
             !(await GlassDialog.confirm(
               'Shrinking will remove tiles or markers outside the new bounds. Continue?',
@@ -723,6 +769,7 @@ export class EditorController {
             },
             0,
           );
+          this.model.removeRegionEntities(this.selection);
           this.model.commit();
           this.dirtyMap = true;
           this.refresh();
@@ -812,7 +859,12 @@ export class EditorController {
   hitEntity = (point: Point) => {
     let best = null;
     for (const entity of this.model.level.entities || []) {
-      const path = entity.type === 'saw' ? entity.path : [entity.position];
+      const path =
+        entity.type === 'saw'
+          ? entity.path
+          : entity.type === 'enemy'
+            ? [entity.spawn, ...entity.patrol]
+            : [entity.position];
       for (let i = 0; i < path.length; i++)
         if (
           Math.hypot(
@@ -952,6 +1004,15 @@ export class EditorController {
     this.finish();
     this.floating = null;
     this.tool = value;
+    for (const button of this.root.querySelectorAll<HTMLElement>(
+      '[data-enemy]',
+    ))
+      button.setAttribute(
+        'aria-pressed',
+        String(
+          this.tool === 'enemy' && button.dataset.enemy === this.enemySpecies,
+        ),
+      );
     for (const b of this.root.querySelectorAll<HTMLElement>('[data-tool]'))
       b.setAttribute('aria-pressed', String(b.dataset.tool === this.tool));
   };
@@ -967,7 +1028,14 @@ export class EditorController {
         },
         0,
       );
-    this.model.paste(this.floating.data, this.floating.x, this.floating.y);
+    if (this.floating.source)
+      this.model.removeRegionEntities(this.floating.source);
+    const skipped = this.model.paste(
+      this.floating.data,
+      this.floating.x,
+      this.floating.y,
+      !!this.floating.source,
+    );
     this.model.commit();
     this.selection = {
       x: this.floating.x,
@@ -984,6 +1052,10 @@ export class EditorController {
     this.floating = null;
     this.dirtyMap = true;
     this.refresh();
+    if (skipped)
+      this.message(
+        `${skipped} entities skipped: complete paths must fit inside the map.`,
+      );
   };
   release = () => {
     if (!this.gesture) return;

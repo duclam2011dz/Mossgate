@@ -138,6 +138,7 @@ it('keeps asset generator groups independent above their shared core', () => {
     'effects',
     'background',
     'entities',
+    'enemies',
   ]) {
     const file = readFileSync(`scripts/assets/${name}.ts`, 'utf8');
     const imports = ts

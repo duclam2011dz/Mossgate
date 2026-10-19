@@ -40,9 +40,9 @@ export class MapFiles {
       typeof wire === 'object' &&
       wire !== null &&
       'version' in wire &&
-      wire.version === 4
+      (wire.version === 4 || wire.version === 5)
     )
-      throw new Error('JSON v4 requires its level ZIP with background.png.');
+      throw new Error('JSON v4/v5 requires its level ZIP with background.png.');
     if (!options?.draft) {
       const errors = playErrors(level);
       if (errors.length) throw new Error(errors.join(' '));
@@ -50,10 +50,11 @@ export class MapFiles {
     }
     return level;
   }
-  static async loadLevel(this: void) {
-    const response = await fetch(
-      `${import.meta.env.BASE_URL}maps/forest-ruins.json`,
-    );
+  static async loadLevel(
+    this: void,
+    id: 'forest-ruins' | 'wildwood-trials' = 'forest-ruins',
+  ) {
+    const response = await fetch(`${import.meta.env.BASE_URL}maps/${id}.json`);
     if (!response.ok)
       throw new Error(`Could not load map (${response.status}).`);
     const text = await response.text();

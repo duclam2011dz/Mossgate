@@ -39,19 +39,26 @@ it('ships detailed, correctly sized reproducible PNGs', () => {
     expect(stored.equals(buffer)).toBe(true);
     expect(required(second[name]).equals(buffer)).toBe(true);
     const png = PNG.sync.read(stored);
-    const dimensions = name.endsWith('-atlas')
-      ? [2560, 1920]
-      : name === 'background' || name.startsWith('background-')
-        ? [1280, 960]
-        : name === 'portal'
-          ? [128, 128]
-          : ['trap-crumble', 'entity-saw'].includes(name)
-            ? [768, 64]
-            : name.startsWith('player-')
-              ? [required(assetManifest.player[name.slice(7)]).frames * 64, 64]
-              : name.startsWith('effect-')
-                ? [384, 32]
-                : [64, 64];
+    const dimensions = name.startsWith('enemy-effect-')
+      ? [32, 32]
+      : name.startsWith('enemy-') && !name.endsWith('-preview')
+        ? [768, 64]
+        : name.endsWith('-atlas')
+          ? [2560, 1920]
+          : name === 'background' || name.startsWith('background-')
+            ? [1280, 960]
+            : name === 'portal'
+              ? [128, 128]
+              : ['trap-crumble', 'entity-saw'].includes(name)
+                ? [768, 64]
+                : name.startsWith('player-')
+                  ? [
+                      required(assetManifest.player[name.slice(7)]).frames * 64,
+                      64,
+                    ]
+                  : name.startsWith('effect-')
+                    ? [384, 32]
+                    : [64, 64];
     expect([png.width, png.height]).toEqual(dimensions);
     if (name.startsWith('player-')) {
       const frames = required(assetManifest.player[name.slice(7)]).frames,

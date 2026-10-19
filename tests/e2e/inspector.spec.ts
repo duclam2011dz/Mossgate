@@ -69,7 +69,7 @@ test('edits type and cell properties, cancels scope changes and exports v3', asy
   const data = MapCodec.encodeLevel(
     MapCodec.parseLevel(await exportedJson(await (await pending).path())),
   );
-  expect(data.version).toBe(4);
+  expect(data.version).toBe(5);
   expect(required(required(data.tileDefaults)[4]).friction).toBe(0);
   expect(
     required(data.cellOverrides).some(

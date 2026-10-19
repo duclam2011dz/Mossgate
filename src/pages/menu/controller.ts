@@ -85,6 +85,11 @@ export class MenuController {
       () => PageNavigation.go('game', { map: 'forest-ruins' }),
       { signal },
     );
+    Dom.require(root, '#wildwood-map', HTMLElement).addEventListener(
+      'click',
+      () => PageNavigation.go('game', { map: 'wildwood-trials' }),
+      { signal },
+    );
     Dom.require(root, '#open-map', HTMLElement).addEventListener(
       'click',
       () => {

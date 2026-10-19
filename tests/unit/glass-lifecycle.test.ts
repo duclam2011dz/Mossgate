@@ -75,7 +75,7 @@ it('uses distinct HTML overlay content for loading, pause, completion and errors
   expect(
     GameOverlayController.content('completed', { elapsed: 125.9, falls: 3 }),
   ).toMatchObject({
-    message: '02:05 · 3 Deaths',
+    message: '02:05 \u00b7 3 Deaths',
     actions: ['Play Again', 'Main Menu'],
   });
   expect(

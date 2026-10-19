@@ -1,3 +1,6 @@
+import { PlayerHealth } from './health.ts';
+import { EnemySystem } from './enemy-system.ts';
+import { moveBody } from './actor-collision.ts';
 import type {
   PlayableMap,
   Input,
@@ -36,7 +39,10 @@ export class GameSimulation {
   }
   #level: PlayableMap;
   player: Player;
-  state: 'playing' | 'paused' | 'completed' = 'playing';
+  state: 'playing' | 'paused' | 'completed' | 'defeated' = 'playing';
+  health = new PlayerHealth();
+  enemies: EnemySystem;
+  healedCheckpoints = new Set<string>();
   elapsed = 0;
   falls = 0;
   broken = new Set<number>();
@@ -48,7 +54,16 @@ export class GameSimulation {
   constructor(level: PlayableMap) {
     this.#level = level;
     this.player = new Player(level);
+    this.enemies = new EnemySystem(level);
     this.respawn = { ...level.spawn };
+  }
+  retry() {
+    this.player = createPlayer({ ...this.#level, spawn: this.respawn });
+    this.health.reset();
+    this.enemies = new EnemySystem(this.#level);
+    this.broken.clear();
+    resetTraps(this);
+    this.state = 'playing';
   }
   step(input: Input, dt = c.step) {
     return GameSimulation.step(this, this.#level, input, dt);
@@ -64,6 +79,7 @@ export class GameSimulation {
     run.events = [];
     run.elapsed += dt;
     updateTraps(run, level, dt);
+    run.health.update(dt);
     const p = run.player,
       wasGrounded = p.grounded;
     const emit = (type: EventType, id = 0, tile: TileContact | null = null) =>
@@ -133,15 +149,22 @@ export class GameSimulation {
         input.axis *
         c.run *
         (p.sneaking ? c.sneakSpeed : 1) *
+        (run.health.slow > 0 ? 0.6 : 1) *
         (material.speed ?? 1);
-      p.vx = approach(
-        p.vx,
-        target,
-        (input.axis
-          ? c.acceleration * (material.acceleration ?? 1)
-          : c.friction * (material.friction ?? 1)) * dt,
-      );
-      if (!input.jumpHeld && p.vy < 0 && !p.springJump)
+      if (run.health.recoil === 0)
+        p.vx = approach(
+          p.vx,
+          target,
+          (input.axis
+            ? c.acceleration * (material.acceleration ?? 1)
+            : c.friction * (material.friction ?? 1)) * dt,
+        );
+      if (
+        run.health.recoil === 0 &&
+        !input.jumpHeld &&
+        p.vy < 0 &&
+        !p.springJump
+      )
         p.vy = Math.max(p.vy, -c.jump * 0.45);
       p.vy = Math.min(c.maxFall, p.vy + c.gravity * dt);
     }
@@ -197,14 +220,30 @@ export class GameSimulation {
       p.y > level.deathY
     ) {
       emit('death');
-      run.player = createPlayer({
-        ...level,
-        spawn: run.respawn || level.spawn,
-      });
       run.falls++;
-      run.broken.clear();
-      resetTraps(run);
+      run.retry();
       return 'respawn';
+    }
+    const hit = run.health.apply(run.enemies.update(run, dt, oldBox));
+    if (hit) {
+      emit('hit');
+      p.dash = 0;
+      p.vx = hit.direction * 80;
+      p.vy = Math.min(p.vy, -60);
+    }
+    if (run.health.hp === 0) {
+      run.state = 'defeated';
+      run.falls++;
+      emit('death');
+      return 'defeated';
+    }
+    if (run.health.immunity === 0) {
+      for (const actor of run.enemies.registry.query(p)) {
+        const left = actor.x - (p.x + p.w),
+          right = actor.x + actor.w - p.x;
+        const amount = Math.abs(left) < Math.abs(right) ? left : right;
+        moveBody(level, p, { x: amount, y: 0 }, run, false);
+      }
     }
     activateCheckpoints(run, level);
     if (overlaps(p, level.portal)) {

@@ -397,3 +397,13 @@ html[data-scene='rain'] {
 .background-dialog [role='status'] {
   min-height: 1.5em;
 }
+
+.water-trail {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 60% 35% 70% 40%;
+  background: linear-gradient(90deg, #f0ffff44, #b9d8dc10 45%, #071e2c33);
+  box-shadow: inset 1px 0 #e4ffff44;
+  pointer-events: none;
+}

@@ -1,3 +1,9 @@
+import {
+  entityAnchor,
+  entityFits,
+  translateEntity,
+} from '../domain/entity-geometry.ts';
+import type { Entity } from '../domain/contracts.ts';
 import type {
   DraftMap,
   Box,
@@ -10,6 +16,7 @@ export interface Clipboard {
   h: number;
   cells: TileId[][];
   overrides: Record<string, PropertyPatch>;
+  entities?: Entity[];
 }
 type Metadata = Omit<DraftMap, 'tiles'>;
 type CommandBase = {
@@ -219,6 +226,19 @@ export class EditorModel {
   }
   copy(region: Box): Clipboard {
     return {
+      entities: (this.level.entities ?? [])
+        .filter((entity) => {
+          const [x, y] = entityAnchor(entity);
+          return (
+            x >= region.x * 16 &&
+            y >= region.y * 16 &&
+            x < (region.x + region.w) * 16 &&
+            y < (region.y + region.h) * 16
+          );
+        })
+        .map((entity) =>
+          translateEntity(entity, -region.x * 16, -region.y * 16),
+        ),
       w: region.w,
       h: region.h,
       overrides: Object.fromEntries(
@@ -245,7 +265,44 @@ export class EditorModel {
       ),
     };
   }
-  paste(data: Clipboard, x: number, y: number) {
+  removeRegionEntities(region: Box) {
+    this.level.entities = (this.level.entities ?? []).filter((entity) => {
+      const [x, y] = entityAnchor(entity);
+      return !(
+        x >= region.x * 16 &&
+        y >= region.y * 16 &&
+        x < (region.x + region.w) * 16 &&
+        y < (region.y + region.h) * 16
+      );
+    });
+  }
+  paste(data: Clipboard, x: number, y: number, preserveIds = false) {
+    let skipped = 0;
+    const entities = (this.level.entities ??= []);
+    for (const source of data.entities ?? []) {
+      const entity = translateEntity(source, x * 16, y * 16);
+      if (
+        !entityFits(entity, this.level.width, this.level.height) ||
+        entities.length >= 256 ||
+        (entity.type === 'enemy' &&
+          entities.filter((e) => e.type === 'enemy').length >= 64)
+      ) {
+        skipped++;
+        continue;
+      }
+      if (!preserveIds) {
+        let suffix = 1;
+        const prefix = source.id.slice(0, 48);
+        while (entities.some((e) => e.id === `${prefix}-copy-${suffix}`))
+          suffix++;
+        entity.id = `${prefix}-copy-${suffix}`;
+      }
+      if (entities.some((e) => e.id === entity.id)) {
+        skipped++;
+        continue;
+      }
+      entities.push(entity);
+    }
     for (let row = 0; row < data.h; row++)
       for (let col = 0; col < data.w; col++) {
         const tx = x + col,
@@ -266,12 +323,12 @@ export class EditorModel {
         } else if (this.level.cellOverrides)
           delete this.level.cellOverrides[key];
       }
+    return skipped;
   }
   resize(width: number, height: number) {
     const old = this.level;
     this.level = {
       ...old,
-      background: { preset: 'night', image: './background.png' },
       width,
       height,
       tiles: Array.from({ length: height }, (_, y) =>
@@ -299,18 +356,8 @@ export class EditorModel {
       );
     if (this.level.entities) {
       const before = this.level.entities.length;
-      this.level.entities = this.level.entities.filter((e) =>
-        e.type === 'checkpoint'
-          ? e.position[0] >= 5 &&
-            e.position[0] + 5 <= width * 16 &&
-            e.position[1] <= height * 16
-          : e.path.every(
-              ([x, y]) =>
-                x >= e.radius &&
-                y >= e.radius &&
-                x + e.radius <= width * 16 &&
-                y + e.radius <= height * 16,
-            ),
+      this.level.entities = this.level.entities.filter((entity) =>
+        entityFits(entity, width, height),
       );
       removed ||= before !== this.level.entities.length;
     }

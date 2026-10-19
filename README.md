@@ -1,4 +1,4 @@
-# Mossgate - v1.0.7
+# Mossgate - v1.0.8
 
 A desktop pixel-art platformer with a file-based map editor. Artwork, animation atlases, and layered forest backgrounds are generated locally. No backend, external art, or runtime service is used.
 
@@ -11,7 +11,7 @@ npm ci
 npm run dev
 ```
 
-Choose **Play > Forest Ruins** to start the built-in challenge, or **Open level ZIP** for your own packaged map. **Editor** opens an empty map. Canceling file selection leaves the menu unchanged.
+Choose **Play > Forest Ruins** to start the built-in challenge, **Play > Wildwood Trials** for six enemy encounters, or **Open level ZIP** for your own packaged map. **Editor** opens an empty map. Canceling file selection leaves the menu unchanged.
 
 Forest Ruins is a 512 x 96, five-stage course: Momentum, Crawl & Break, Spring & Drop, Timing, and Final Gauntlet. Four checkpoints preserve progress across deaths; Restart returns to the beginning. The first-play design target is 5-8 minutes, including observation and retries; the verified optimal input replay takes about 1:41. No human first-play timing has been measured.
 
@@ -41,6 +41,27 @@ Crouch changes the hitbox from 10 x 14 to 10 x 8 world units, keeping feet fixed
 
 Spikes, saws, and falling cause a respawn and increment Deaths. Death restores broken/crumbling blocks and resets trap cycles; the last activated checkpoint remains. Pause offers Resume, Restart, and Main Menu. Completion offers Play Again and Main Menu. Both support clicking. Focus loss pauses and never resumes automatically.
 
+## Enemies and health
+
+Wildwood Trials is a Day course with six species encounters, six healing checkpoints, and a combined final encounter. Its built-in JSON and an Editor-importable `wildwood-trials.zip` live in `public/maps`. Forest Ruins and the legacy/showcase maps retain their geometry.
+
+Player starts at 100 HP. The overhead bar shows health percentage, poison and slow timers. Enemy contact/attacks hurt; player has no attack and enemies are immortal. Direct hits cancel dash, cause brief recoil and grant 0.7 seconds of enemy immunity/body pass-through. Dash alone grants no protection. Spikes, saws and falls still respawn immediately. Respawn/Retry restores HP/runtime terrain, traps, enemies and shots, with one second of enemy protection.
+
+| Enemy          | Attack / contact damage | Behavior                                            |
+| -------------- | ----------------------- | --------------------------------------------------- |
+| Bramble Guard  | 35 / 20                 | Ground patrol, branch melee                         |
+| Spore Pod      | 20 / 15                 | Ground patrol, arcing spores; poison 5 HP/s for 4 s |
+| Root Charger   | 45 / 25                 | Ground patrol, locked-direction charge              |
+| Thorn Wisp     | 25 / 15                 | Flying pursuit, straight thorns                     |
+| Vine Moth      | 40 / 20                 | Flying pursuit, telegraphed dive                    |
+| Bloom Sentinel | 25 per seed / 15        | Flying retreat, three-seed spread; 40% slow for 3 s |
+
+Solid terrain blocks vision and shots. Ground enemies stop at walls/ledges; flying enemies navigate around terrain. Only Bloom seeds can directly break enabled breakable blocks or trigger crumble. Poison/slow refresh without stacking; poison can defeat the player. Each checkpoint heals once per run. At 0 HP, **Defeated** offers Retry, Restart or Main Menu. Retry preserves elapsed time/Deaths and the current checkpoint; Restart starts a new run. Pause/results freeze combat and statuses while weather continues.
+
+Editor **Entities** offers checkpoint, saw and six species tools. Inspect a placed enemy to edit spawn, facing, patrol and bounded stat overrides, or duplicate/delete it. Ground patrols have two horizontal endpoints; flying patrols support 2-16 points. Read-only species traits define attacks, hitboxes, windup, vision cone and status effects. Selected enemies show patrol geometry; Editor never runs AI. JSON v5 records authored definitions only; ZIP v4 remains readable and legacy bare JSON v1-v3 still imports.
+
+Rain glass droplets grow, merge, run and fade before rebirth; trails fade independently. Resize and Inspector updates preserve their age. Reduced motion keeps positions stationary and uses slow opacity changes only.
+
 ## Tiles and traps
 
 | ID   | Tile                | Default behavior                                            |
@@ -65,7 +86,7 @@ Material under the center of your feet wins, with nearest support as fallback. S
 Maps start empty at 160 x 40. Width/height limits are 16 x 12 through 512 x 128. New and Resize use the size fields; shrinking warns before removing content and is undoable.
 
 - **Brush / Erase:** click or drag; right-drag erases. **Rectangle / Fill:** paint a region.
-- **Select:** drag a region; Ctrl/Cmd+C copies and Ctrl/Cmd+V previews a paste. Drag inside a selection to preview a move. Click/Enter commits; Esc cancels. Delete clears a selection. Copies include empty cells and explicit cell properties; out-of-bounds paste is clipped.
+- **Select:** drag a region; Ctrl/Cmd+C copies and Ctrl/Cmd+V previews a paste. Drag inside a selection to preview a move. Click/Enter commits; Esc cancels. Delete clears a selection. Copies include empty cells, explicit cell properties, and entities selected by their anchor. Entity copies receive new IDs; moves retain IDs. Full paths translate together. Tiles clip at map bounds; entities that cannot fit are skipped with a notice.
 - **Spawn / Portal / Checkpoint:** click to place. Spawn/checkpoint feet snap to the cell bottom; portal top-left snaps to the grid.
 - **Saw:** click 2-32 grid points, Enter completes, Esc cancels. **Inspect** selects an entity; drag its waypoint handles to change the path, or edit points in the expanded inspector.
 - **A/D, W/S:** pan except while typing. Wheel zooms around the pointer; zoom spans 25-400%. Click/drag the minimap to navigate both axes.
@@ -102,19 +123,21 @@ Backgrounds have four parallax layers. Day has brighter sunlight and clear glass
 
 Export downloads `mossgate-map.zip` containing `mossgate-map/level.json` and `mossgate-map/background.png`. The PNG is a 2560 x 1920 atlas: sky / distant on the top row, midground / near below, each 1280 x 960. Custom PNG bytes are preserved. JSON uses `background: {"preset":"night"|"day"|"rain","image":"./background.png"}`. The preset determines weather/glass, independently of custom image content. Only bundled paths are resolved; no remote images are loaded.
 
-Menu accepts ZIP only; Editor also imports legacy JSON v1/v2/v3, defaulting to Night. JSON v4 must travel in its ZIP. ZIP and unpacked content are capped at 24 MiB, JSON at 2 MiB and PNG at 20 MiB. Imports validate archive entries, schema, PNG signature/dimensions and image decoding; encrypted archives, extra files, duplicate entries and unsafe paths are rejected.
+Menu accepts ZIP only; Editor also imports legacy JSON v1/v2/v3, defaulting to Night. JSON v4/v5 must travel in its ZIP. ZIP and unpacked content are capped at 24 MiB, JSON at 2 MiB and PNG at 20 MiB. Imports validate archive entries, schema, PNG signature/dimensions and image decoding; encrypted archives, extra files, duplicate entries and unsafe paths are rejected.
 
 ## JSON format
 
-Exports use minified **version 4**; legacy v1/v2/v3 remain readable. Version 4 adds the background descriptor and keeps v3 geometry/properties unchanged. Base fields are `size`, nullable `spawn` and `portal`, `deathY`, and `rects`. Rectangles are `[x,y,width,height,tileId]` in tile units; later ones overwrite earlier ones. Spawn/portal/death depth use world units. Export merges equal runs vertically.
+Exports use minified **version 5**; legacy v1/v2/v3 remain readable. Version 4 added the background descriptor; v5 adds authored enemy definitions while retaining geometry/properties. Base fields are `size`, nullable `spawn` and `portal`, `deathY`, and `rects`. Rectangles are `[x,y,width,height,tileId]` in tile units; later ones overwrite earlier ones. Spawn/portal/death depth use world units. Export merges equal runs vertically.
 
-Optional v3 fields:
+Optional fields inherited from v3:
 
 - `tileDefaults`: patches keyed by tile ID, such as `{"4":{"friction":0}}`.
 - `cellOverrides`: `[x,y,patch]`, such as `[[12,30,{"speed":0.5}]]`.
 - `entities`: stable IDs with `type: "checkpoint"` and `position: [feetX,feetY]`, or `type: "saw"` with `path`, `speed`, `radius`, `mode`, and `phase`.
 
 Patch keys are `speed`, `acceleration`, `friction`, `springForce`, `conveyor`, `hazard`, `breakable`, `offsetX`, `offsetY`, `width`, `height`, `effectsColor`, `effectsIntensity`, `safeTime`, `warningTime`, `activeTime`, `delay`, `downtime`, and `phase`; only relevant fields are accepted. Missing values inherit; redundant patches and empty collections are omitted. Saw waypoints snap to 16-unit grid nodes and stay within map bounds including radius.
+
+Version 5 also accepts `type: "enemy"`, a known `species`, top-left `spawn: [x,y]`, `facing: -1|1`, `patrol: [[x,y],...]`, and optional sparse `overrides`. Override keys are `patrolSpeed`, `chaseSpeed`, `detectionRange`, `attackDamage`, `contactDamage`, `cooldown`, and `leash`; limits live in `enemyOverrideLimits`. Unknown species, duplicate IDs and out-of-range overrides fail validation. Maximum 64 enemies within 256 authored entities; projectiles are runtime only and capped at 192.
 
 JSON documents are capped at 2 MiB. Editor accepts incomplete drafts; Play additionally requires clear, supported spawn/portal/checkpoints away from hazards and saw paths. It does not prove reachability. New/Resize defaults death depth to map bottom + 64.
 
@@ -124,7 +147,7 @@ JSON documents are capped at 2 MiB. Editor accepts incomplete drafts; Play addit
 | ----------------------------------------- | ----------------------------------------------------------------------- |
 | `npm run dev`                             | Development server                                                      |
 | `npm run build` / `npm run preview`       | Production build / preview                                              |
-| `npm run assets:generate`                 | Generate 45 PNGs and manifest                                           |
+| `npm run assets:generate`                 | Generate 92 PNGs and manifest                                           |
 | `npm run typecheck`                       | Strict TypeScript across domain, browser, tooling and tests             |
 | `npm run lint`                            | Type-aware ESLint, zero warnings                                        |
 | `npm run format` / `npm run format:check` | Format / verify style                                                   |
@@ -134,11 +157,11 @@ JSON documents are capped at 2 MiB. Editor accepts incomplete drafts; Play addit
 | `npm run test:production`                 | Build and test static subdirectory deployment, screenshots, and buffers |
 | `npm run check`                           | Typecheck, lint, format, then runtime/build/browser checks              |
 
-Install Chromium once with `npx playwright install chromium`. E2E starts port 4173 and writes screenshots to `output/playwright`. The legacy course and the full challenge have legal-input traversal tests. Test hooks are excluded from production.
+Install Chromium once with `npx playwright install chromium`. E2E starts port 4173 and writes screenshots to `output/playwright`. Legacy, Forest Ruins and Wildwood Trials have legal-input traversal tests. Test hooks are excluded from production.
 
-Physics is 60 Hz; sprite clips are 24 FPS. Loading, pause, completion, and errors use keyboard-accessible HTML/CSS glass overlays. Playing has no permanent HUD. Four generated background layers use parallax and a half-resolution buffer with directional blur only on the background. Player, terrain, hazards, and text remain sharp. Reduced motion disables gameplay blur, shake, flashes and decorative CSS motion; rain remains sparse and slow. Effects remain capped at 512 particles / 64 ambient emitters; tint caches are bounded.
+Physics is 60 Hz; sprite clips are 24 FPS. Loading, pause, completion, and errors use keyboard-accessible HTML/CSS glass overlays. A Canvas health/status bar follows the player. Four generated background layers use parallax and a half-resolution buffer with directional blur only on the background. Player, terrain, hazards, and text remain sharp. Reduced motion disables gameplay blur, shake, flashes and decorative CSS motion; rain remains sparse and slow. Effects remain capped at 512 particles / 64 ambient emitters; tint caches are bounded.
 
-Keep README, ARCHITECTURE, CHANGELOG, and generated assets synchronized. No enemy AI, audio, backend, or persistent map library is included.
+Keep README, ARCHITECTURE, CHANGELOG, and generated assets synchronized. No audio, backend, or persistent map library is included.
 
 ## Glass UI and publishing
 

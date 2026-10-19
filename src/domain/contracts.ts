@@ -52,7 +52,32 @@ export interface Saw {
   mode: 'loop' | 'ping-pong';
   phase: number;
 }
-export type Entity = Saw | Checkpoint;
+export type EnemySpecies =
+  | 'bramble-guard'
+  | 'spore-pod'
+  | 'root-charger'
+  | 'thorn-wisp'
+  | 'vine-moth'
+  | 'bloom-sentinel';
+export interface EnemyOverrides {
+  patrolSpeed?: number;
+  chaseSpeed?: number;
+  detectionRange?: number;
+  attackDamage?: number;
+  contactDamage?: number;
+  cooldown?: number;
+  leash?: number;
+}
+export interface Enemy {
+  id: string;
+  type: 'enemy';
+  species: EnemySpecies;
+  spawn: PointTuple;
+  facing: -1 | 1;
+  patrol: PointTuple[];
+  overrides?: EnemyOverrides;
+}
+export type Entity = Saw | Checkpoint | Enemy;
 export interface DraftMap {
   background?: BackgroundSpec;
   width: number;
@@ -72,7 +97,7 @@ export interface PlayableMap extends DraftMap {
 }
 export type RectangleTuple = [number, number, number, number, TileId];
 export interface WireMap {
-  version: 1 | 2 | 3 | 4;
+  version: 1 | 2 | 3 | 4 | 5;
   background?: BackgroundSpec;
   size: PointTuple;
   spawn: PointTuple | null;
@@ -98,6 +123,7 @@ export interface CrumbleState {
 }
 export type EventType =
   | 'break'
+  | 'hit'
   | 'death'
   | 'jump'
   | 'dash'

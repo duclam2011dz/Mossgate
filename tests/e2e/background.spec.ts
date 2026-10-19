@@ -145,9 +145,9 @@ test('Rain and wet glass keep moving while paused, are bounded and respect reduc
   await expect.poll(checksum).not.toBe(image);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.waitForTimeout(100);
-  const frozen = await bead.getAttribute('style');
+  const frozen = await bead.evaluate((node) => node.style.transform);
   await page.waitForTimeout(150);
-  expect(await bead.getAttribute('style')).toBe(frozen);
+  expect(await bead.evaluate((node) => node.style.transform)).toBe(frozen);
   await page.evaluate(() => {
     Object.defineProperty(document, 'hidden', {
       configurable: true,

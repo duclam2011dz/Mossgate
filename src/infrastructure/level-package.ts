@@ -107,10 +107,12 @@ export class LevelPackageCodec {
         typeof raw !== 'object' ||
         raw === null ||
         !('version' in raw) ||
-        raw.version !== 4 ||
+        (raw.version !== 4 && raw.version !== 5) ||
         level.background?.image !== './background.png'
       )
-        throw new Error('Packaged maps require JSON v4 and ./background.png.');
+        throw new Error(
+          'Packaged maps require JSON v4/v5 and ./background.png.',
+        );
       const atlas = await extract(png, packageLimits.png);
       await BackgroundResources.validate(atlas);
       return { level, atlas };

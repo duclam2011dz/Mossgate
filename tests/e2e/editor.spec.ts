@@ -99,7 +99,7 @@ test('exported JSON reimports through Play and dirty navigation can be cancelled
   await page.getByRole('button', { name: 'Export', exact: true }).click();
   const download = await pending;
   const text = await exportedJson(await download.path());
-  expect(MapCodec.encodeLevel(MapCodec.parseLevel(text)).version).toBe(4);
+  expect(MapCodec.encodeLevel(MapCodec.parseLevel(text)).version).toBe(5);
   expect((await editorSnapshot(page)).dirty).toBe(false);
   await page.getByRole('button', { name: 'Menu', exact: true }).click();
   await expect(page.locator('.menu')).toBeVisible();
